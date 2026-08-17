@@ -5,6 +5,16 @@
   --foreground: #171717;
 }
 
+@theme {
+	--color-vvook-yellow: #faff00;
+	--color-vvook-black: #080808;
+	--color-vvook-grey: #C3BEBE;
+	--color-vvook-lightgrey: #d9d9d9;
+	--font-logo: "Bebas Neue", sans-serif;
+	--font-display: "Anonymous Pro", monospace;
+	--font-menu: "DM Mono", monospace;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
