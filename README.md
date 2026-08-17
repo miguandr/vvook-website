@@ -2,13 +2,11 @@
 
 Website for a modeling agency — Next.js, Sanity, GSAP, Netlify. Built end-to-end (design import through deploy) as a full production reference project.
 
-**Status:** early scaffolding — see [ROADMAP.md](./ROADMAP.md) for the current phase and what's next.
+**Status:** early scaffolding.
 
 ## Stack
 
 Next.js 16 (App Router) · Tailwind CSS v4 · Sanity · GSAP · Netlify · Resend · Vitest + Playwright
-
-Full rationale for each choice is in [ROADMAP.md](./ROADMAP.md#stack).
 
 ## Getting started
 
@@ -20,7 +18,7 @@ Full rationale for each choice is in [ROADMAP.md](./ROADMAP.md#stack).
 
 ## Project structure
 
-See [ROADMAP.md](./ROADMAP.md) for the target folder layout and architecture decisions; it gets filled in here once it exists on disk.
+Filled in once the folder layout exists on disk (Phase 1).
 
 ## Testing
 
@@ -34,7 +32,7 @@ Unit tests (Vitest + React Testing Library) live next to the code they cover. E2
 
 - Conventional commits, enforced by commitlint on `commit-msg`.
 - Every PR needs CI green (lint, typecheck, unit, E2E, build) before merge.
-- See [ROADMAP.md](./ROADMAP.md) for phase-by-phase scope.
+- `main` and `dev` are protected — all work happens on a feature branch, merged via PR.
 
 ## License
 

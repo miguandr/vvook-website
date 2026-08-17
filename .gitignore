@@ -38,4 +38,7 @@ yarn-error.log*
 
 # local AI tooling cache (not project source)
 .atl/
+
+# internal planning docs — not part of the public deliverable
 /CLAUDE.md
+/ROADMAP.md
