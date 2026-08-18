@@ -215,10 +215,82 @@ Nothing meaningful to unit test yet — a schema is declarative configuration, n
 
 ---
 
-### Pending — Next Session
+### Pending — end of Session 03
 
-- [ ] Connect Next.js to Sanity: client setup (`src/sanity/lib/client.ts`), GROQ queries, TypeGen, CORS origins for `localhost:3000`
-- [ ] First real unit tests — data-fetching functions with a mocked Sanity client
+- [x] Connect Next.js to Sanity: client setup, GROQ queries, TypeGen, CORS origins for `localhost:3000`
+- [x] First real unit tests — data-fetching functions with a mocked Sanity client
 - [ ] Confirm real page list/structure with the client
 - [ ] Transfer Sanity project ownership to Boris once he's responsive
+- [ ] Merge `dev` → `main` once there's something real worth releasing
+
+---
+
+## Session 04 — 2026-08-18
+
+### Goal
+
+Finish Phase 3b: real GROQ queries, TypeGen actually working end to end, environment variables, the first unit test, and CI running it. Close out Phase 3 entirely.
+
+---
+
+### 1. `queries.ts` needs `defineQuery`, not a plain string
+
+The first draft of `TALENTS_QUERY` (later renamed `TALENT_GRID_QUERY` — see §4) was a plain template literal. TypeGen only detects queries wrapped in `defineQuery()` (or the `groq` tag) — a bare string is invisible to it, silently skipped, no error. Fixed by wrapping the query. Full mechanics — including the "two separate inputs, not a chain" model (schema → `schema.json`, queries scanned independently, both combined into `sanity.types.ts`) — written up properly in the new `docs/SANITY.md`, not duplicated here.
+
+---
+
+### 2. TypeGen config placement bug, then a real "does this even work" gap
+
+`typegen: {...}` first landed as a bare top-level statement in `sanity.cli.ts`, outside `defineCliConfig({...})` entirely — invalid syntax, caught immediately. Once moved inside correctly and `schema.json` extracted for the first time (`npx sanity schema extract`), `sanity dev`'s watch mode started regenerating types automatically — the standalone-Studio advantage from Session 03, now actually observed working, not just theoretical.
+
+Even with `sanity.types.ts` generating real types, `client.fetch(TALENT_GRID_QUERY)` still returned `any` — missing `overloadClientMethods: true` in the typegen config, which is what makes `client.fetch()` automatically pick up the right result type for a given `defineQuery`. Added it, regenerated, confirmed via hover in the editor (`const talents: TALENT_GRID_QUERY_RESULT`) and, more convincingly, by intentionally typo-ing a field name and watching TypeScript flag it immediately.
+
+---
+
+### 3. Environment variables
+
+`projectId`/`dataset` moved out of `client.ts` and into `process.env.NEXT_PUBLIC_SANITY_PROJECT_ID` / `NEXT_PUBLIC_SANITY_DATASET`, set in `.env.local` (real values, gitignored) and mirrored empty in `.env.example` (committed, documents what's needed). `NEXT_PUBLIC_` prefix specifically because these may need to be read client-side later (Visual Editing); without it Next.js keeps a var server-only.
+
+**Real mistake worth remembering**: first attempt wrote `projectId: 'NEXT_PUBLIC_SANITY_PROJECT_ID'` — the variable's *name* as a literal string, not its *value*. `process.env.NEXT_PUBLIC_SANITY_PROJECT_ID` reads the value; without `process.env`, it's just text.
+
+**Second-order bug this caused**: these are `NEXT_PUBLIC_` (not secret) values, but CI has no `.env.local` at all — `.env.local` is gitignored on purpose and never reaches the runner. `next build` failed in CI with `Configuration must contain projectId`, because `process.env.NEXT_PUBLIC_SANITY_PROJECT_ID` was simply `undefined` there. Fixed by setting them directly as plain (non-secret) `env:` values at the job level in `ci.yml` — genuinely public values don't need GitHub Secrets, just don't hardcode anything that actually is sensitive (a write token, an API key) the same way; those go through Secrets.
+
+---
+
+### 4. Schema stayed put; the query got renamed
+
+Talked through renaming `talent` (the schema) to `talent_grid` to match the query's purpose — rejected. The schema describes what the *data is* (a talent/person), and the exact same `talent` document will power both the grid (partial fields) and, later, the detail page (every field). Renaming a schema after a single use case would tie it to that one page. The **query** got the more specific name instead: `TALENTS_QUERY` → `TALENT_GRID_QUERY`, since a future `TALENT_DETAIL_QUERY` (or similar) will exist alongside it, and vague names would collide semantically even if not literally.
+
+---
+
+### 5. Extracted `getTalents()`, wrote the first test
+
+`client.fetch(TALENT_GRID_QUERY)` moved out of `page.tsx` into its own function, `src/sanity/lib/getTalents.ts` — planned all the way back in the original architecture pass specifically so it could be unit tested without needing to render an async Server Component (a real Vitest limitation, not a workaround).
+
+Installed Vitest for the first time this project (`npm install -D vitest`, `"test": "vitest run"` in `package.json`). First test (`getTalents.test.ts`) mocks the `./client` module with `vi.mock`, so `getTalents()` calls a fake `client.fetch` instead of hitting Sanity for real — fast, deterministic, no network dependency. Mock data was corrected to use a realistic `mainPhoto` shape (matching what a real Sanity image reference actually looks like) rather than `null`, after a good catch: `Rule.required()` makes a field mandatory in *Studio* (content authoring), not a hard type/runtime guarantee — worth remembering as a distinct thing from "this can never be null."
+
+---
+
+### 6. Tests now run in CI, which broke branch protection in a subtle way
+
+Added `npm run test` as a step in `ci.yml`, between lint and build (fail on the cheapest signal first), and renamed the job from "Lint & build (includes typecheck)" to "Lint, test & build" to reflect what it now does.
+
+**The gotcha**: branch protection requires a status check *by exact name*. Renaming the CI job orphaned the old required check — nothing ever reports a check called "Lint & build (includes typecheck)" again, so GitHub shows it permanently "pending," blocking merge indefinitely. Fixed by updating `required_status_checks` on both `dev` and `main` to require "Lint, test & build" instead. **Lesson: renaming a CI job name requires updating branch protection in the same PR, not as an afterthought.**
+
+---
+
+### 7. Phase 3 complete
+
+Both 3a (Sanity project + standalone Studio + schema) and 3b (Next.js connection, TypeGen, env vars, first test, CI) are done. Full reference write-up lives in `docs/SANITY.md` (created this session) — headless CMS concept, standalone vs. embedded reasoning, the complete schema with rationale, the full data-flow diagram, every gotcha hit, and what's still open. `ROADMAP.md` updated to reflect both sub-phases done, plus a new "Pending chores" section (low-priority, no-rush items — first entry: add Prettier).
+
+---
+
+### Pending — Next Session (Phase 4 — Static layout & pages)
+
+- [ ] Header/Footer shared layout
+- [ ] Static skeletons: Welcome (no animation yet — just the visual shell), Home, About, Legal (privacy/image-rights — hardcoded `.tsx`, not Sanity, per the original architecture decision)
+- [ ] Explicitly NOT this phase: Talent listing/detail (needs real dynamic Sanity data — Phase 6), Contact (needs the Resend backend — Phase 7), any GSAP animation (Phase 5)
+- [ ] Confirm real page list/structure with the client
+- [ ] Transfer Sanity project ownership to Boris once he's responsive
+- [ ] Prettier (low-priority chore)
 - [ ] Merge `dev` → `main` once there's something real worth releasing
