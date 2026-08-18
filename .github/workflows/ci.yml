@@ -10,6 +10,9 @@ jobs:
   ci:
     name: Lint, test & build
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SANITY_PROJECT_ID: w0ka7cdd
+      NEXT_PUBLIC_SANITY_DATASET: production
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
