@@ -154,9 +154,71 @@ Miguel has ADHD — long paragraphs of explanation are hard to follow. Added an 
 
 ---
 
-### Pending — Next Session
+### Pending — end of Session 02
 
 - [ ] Confirm real page list/structure with the client (design and page count changed from the original brief)
-- [ ] Sanity project setup and schema (talent, categories, about, site settings, featured-grid ordering)
+- [x] Sanity project setup and schema (talent — categories/gender explicitly dropped, see Session 03)
 - [ ] Merge `dev` → `main` once there's something real worth releasing
 - [ ] Revisit `body`'s remaining default background/foreground vars in `globals.css` once real pages set their own
+
+---
+
+## Session 03 — 2026-08-17
+
+### Goal
+
+Set up Sanity: a real project, the Studio, and the first content schema (`talent`).
+
+---
+
+### 1. Standalone Studio, not embedded — a plan reversal mid-setup
+
+**What changed**: ROADMAP originally called for Studio embedded in the Next.js app at `/studio` (decided back in the initial architecture pass). Loading Sanity's own current best-practices guide mid-setup showed that's now explicitly *not recommended* for new projects — standalone is.
+
+**Why standalone wins**: `sanity dev`/`sanity build` run on Vite — 10-30x faster than compiling the Studio through Next.js. Standalone Studios auto-update with bugfixes/features; embedded ones need a manual dependency bump + redeploy every time (Next.js doesn't support the ESM import maps needed for auto-update). TypeGen watches and regenerates types live under `sanity dev`; embedded requires re-running it by hand after every query change.
+
+**Why the switch cost nothing**: caught before any embedded Studio existed to migrate away from — pure upside, no rework. Result: `studio/` is its own app at the repo root, own `package.json`/`node_modules`/git-ignore, runs on `localhost:3333` alongside `next dev` on `localhost:3000` — two dev servers, not one embedded route.
+
+**Mechanical hiccups** (same root cause twice): both `npm create sanity@latest -- --output-path studio` and an earlier `npm install` were run from `src/app/` instead of the repo root. `npm install` self-corrected (npm walks up to find the nearest `package.json`); `--output-path` did not (it's relative to cwd), landing the whole Studio inside `src/app/studio/` until caught and moved with `mv src/app/studio studio`. Lesson: `npm install` is forgiving about cwd, most CLI scaffolding flags are not — check `pwd` before any command that writes new files/folders.
+
+---
+
+### 2. Sanity project ownership — pending transfer
+
+**What**: no client (Boris) response when a real Sanity account was needed to create the project, so it was created under Miguel's personal Sanity account to keep moving, with `--dataset production` (default single dataset — no need for multiple environments yet).
+
+**Why this is explicitly temporary**: a client's CMS project living permanently under the freelancer's personal account is a real, common professional pitfall — if the working relationship ends, the client loses access to their own backend. Sanity supports transferring project ownership to another organization later, so this is a reversible stopgap, not a compromise on the end state. Tracked as an open item in `ROADMAP.md` until Boris creates his own account/org and it gets transferred.
+
+---
+
+### 3. The `talent` schema — three real corrections along the way
+
+**Mechanics recap**: `defineType`/`defineField` in `studio/schemaTypes/talent.ts`, aggregated into `studio/schemaTypes/index.ts`'s `schemaTypes` array. `defineType({...})` on its own does nothing without `export default` in front of it — easy to forget, breaks the import silently (well, loudly — nothing shows up in Studio).
+
+**Bugs caught and fixed**:
+- `gallery: { type: 'image' }` only allows one photo — needed `type: 'array', of: [{ type: 'image' }]` for the multi-photo fan we saw in Figma.
+- `category: { type: 'document' }` isn't a real field type. The right type for "this field points at another document" is `reference`, with `to: [{ type: '...' }]` naming which document type it can point to.
+
+**A real, deliberate scope decision — no gender/category field**: early drafting drifted toward reviving old-project baggage (Women/Men/Commercial from `rebuild_website/vvook`, explicitly ruled out weeks ago) and then toward using presence/absence of unrelated fields as an implicit category signal — both corrected. Final call, stated directly by Miguel: **no categorization by gender on `talent` at all.** Simple, and avoids modeling a distinction nobody asked for.
+
+**`suit`/`dress` — not what they looked like at first.** Read initially as a disguised gender field (fill one or the other → implicit category). Actually just optional wardrobe sizing for booking — a suit size for menswear shoots, a dress size for womenswear shoots, independent of each other, same spirit as the `shoes` size field already in the schema. Kept as `number` per Miguel's call (his read on the agency's actual sizing convention), despite the general risk that clothing sizes sometimes include letters (`'42R'`) that wouldn't fit a number field — worth revisiting only if that ever actually comes up.
+
+**Validation clarified**: fields are optional by default in Sanity — nothing has to be done to make a field optional. `validation: (Rule) => Rule.required()` is something you *add* to force a field to be filled in; used on `name` and `mainPhoto` only.
+
+**Final v1 shape**: `name` (string, required), `mainPhoto` (image, required), `gallery` (image array, optional), `height`/`chest`/`waist`/`hips`/`shoes`/`suit`/`dress` (numbers, all optional). Verified visually in Studio at `localhost:3333` before committing.
+
+---
+
+### 4. Tests — deliberately none this session
+
+Nothing meaningful to unit test yet — a schema is declarative configuration, not logic. Real test coverage starts next session once GROQ queries and data-fetching functions exist (extracted into plain async functions per the original architecture plan, testable with a mocked Sanity client). Added explicitly to `ROADMAP.md` Phase 3b rather than skipped silently.
+
+---
+
+### Pending — Next Session
+
+- [ ] Connect Next.js to Sanity: client setup (`src/sanity/lib/client.ts`), GROQ queries, TypeGen, CORS origins for `localhost:3000`
+- [ ] First real unit tests — data-fetching functions with a mocked Sanity client
+- [ ] Confirm real page list/structure with the client
+- [ ] Transfer Sanity project ownership to Boris once he's responsive
+- [ ] Merge `dev` → `main` once there's something real worth releasing
