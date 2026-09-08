@@ -3,6 +3,7 @@ import { DM_Mono } from "next/font/google";
 import { Bebas_Neue } from "next/font/google";
 import { Anonymous_Pro } from "next/font/google";
 import "./globals.css";
+import Header from "@/components/Header";
 
 const bebasNeue = Bebas_Neue({
 	weight: "400",
@@ -34,7 +35,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${bebasNeue.variable} ${dmMono.variable} ${anonymousPro.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-vvook-black text-white">
+		<Header />
+		{children}
+	  </body>
     </html>
   );
 }
