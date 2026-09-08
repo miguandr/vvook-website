@@ -294,3 +294,95 @@ Both 3a (Sanity project + standalone Studio + schema) and 3b (Next.js connection
 - [ ] Transfer Sanity project ownership to Boris once he's responsive
 - [ ] Prettier (low-priority chore)
 - [ ] Merge `dev` → `main` once there's something real worth releasing
+
+---
+
+## Session 05 — 2026-09-08
+
+### Goal
+
+Continue Phase 4: resolve a Header logo sizing conflict, review the FINAL About/Contact Figma designs (superseding earlier drafts), and build the About page's static structure and styling from scratch.
+
+---
+
+### 1. Boris set up his own Sanity project
+
+Boris finally created his own Sanity account and invited Miguel to a brand-new project — a different `projectId` than the one used since Session 03 (`w0ka7cdd` → `sysdxpdd`), not a transfer of the old one, a fresh empty project. Decided to switch immediately rather than defer, since almost nothing existed in the old project yet. Updated everywhere the ID was hardcoded: `studio/sanity.cli.ts`, `studio/sanity.config.ts`, and `.github/workflows/ci.yml`'s job-level `env:` block. Also added an `instagram` field (type `url`) to the `talent` schema.
+
+**Still blocked (not urgent):** Miguel's role on Boris's project is below Administrator, which blocks setting up CORS origins. Doesn't block Phase 4 — no Sanity calls happen in these static pages.
+
+---
+
+### 2. Header logo size — a real Figma inconsistency, resolved by keeping what's built
+
+The About page's Figma frame showed the logo at 54px/14px, but the Header already built (Session 04, from the Landing/Model frames) uses 64px/18px. Rather than chase the Figma number blindly, the two were compared directly and the discrepancy flagged as a design inconsistency, not a build mistake. **Decision: keep 64px/18px** — the size already shipped in `Logo.tsx`.
+
+**Open item to verify next session:** `Logo.tsx` currently reads `text-[54px]` / `text-[14px]`, not `text-[64px]` / `text-[18px]`. This contradicts the decision above — needs a check against the live Header before trusting either number further.
+
+---
+
+### 3. About and Contact — real final Figma designs
+
+Miguel shared the actual final frames (node `278:273` for About, `278:229` for Contact in file `bJUzL4TpiEpnMOawTCmxn1`), superseding every earlier draft. Extracted via Figma's screenshot + metadata tools (not `get_design_context`, since Miguel writes the code himself — that tool is for generating implementation code directly, which isn't the point of this project).
+
+**What the designs contain:**
+- About: "ABOUT" kicker + "OUR VISION" headline, 4 numbered manifesto paragraphs (`|00`–`|03`), a founder block (Boris's photo + "FOUNDER" / "Boris Kralj" / "Est. 2024")
+- Contact: "BOOKING & SUBMISSION" kicker + "CONNECT WITH US" headline, a booking form (Name/Organization, Email, Inquiry), Email/Tel/Instagram + Address blocks, full-bleed photo
+
+**Discoveries:**
+- **Nav active-state pattern, confirmed visually**: whichever page is current shows its nav link yellow + underlined; the other stays plain white, no underline. Not implemented yet — `NavLink` in `Header.tsx` needs `usePathname()`. Flagged as a Phase 4 follow-up.
+- **Font question resolved — no new fonts needed.** Two fonts (Cormorant Garamond, Familjen Grotesk) were flagged as required based on an earlier, now-superseded About draft. Miguel corrected this directly: the FOUNDER heading is Bebas Neue (already loaded, `font-logo`) and "Boris Kralj" is Anonymous Pro (already loaded, `font-display`) — both fonts already wired since Session 02. Cormorant Garamond and Familjen Grotesk are fully dropped. **Lesson: don't infer a font family from how a screenshot looks — a condensed serif-looking render turned out to just be Anonymous Pro at a particular size. Ask the source of truth (Figma's own text-layer panel) instead of guessing from a render.**
+- The email typo spotted in earlier sessions (`info@vvookmanagenet.com`) persists in the final design too. Miguel's call: not worth fixing now, he'll correct it when the Contact form is actually coded.
+- Only one real Figma Variable exists on either frame: `Vvook_yellow = #faff00`, already matching the existing `--color-vvook-yellow` token — no new color token needed.
+
+---
+
+### 4. Building the About page — semantic HTML before Tailwind
+
+Per the project's teaching approach, `src/app/about/page.tsx` was built in two clearly separated passes: plain semantic HTML first, styling second.
+
+**Semantic HTML concepts covered:**
+- `async` is only needed on a Server Component when it `await`s something inside (like Home's `client.fetch`). About has no data fetching yet, so no `async`.
+- `<section>` groups a thematically distinct, headed block of content — it appears in the document outline, which is what search engines and screen readers use to understand page structure. Plain `<div>` carries no such meaning.
+- Only **one `<h1>` per page** — it's the page's single main title. A second content block (Founder) gets `<h2>`, not another `<h1>`.
+- The four numbered paragraphs are **not** an `<ol>` — the numbers are a decorative visual anchor, not a real ordered list (it's continuous prose, not discrete list items). Plain `<p>` tags, with the number as a `<span aria-hidden="true">` so screen readers skip it.
+- `<hgroup>` is the correct tag for the "ABOUT" kicker + "OUR VISION" heading pair — built specifically to group a heading with associated non-heading text (like a tagline) without the tagline counting as its own outline entry.
+- `next/image`'s `Image` component needs a valid `src` or it errors — since Boris's photos aren't in hand yet (requested, pending), the image tag was left commented out rather than using an invalid placeholder.
+
+**Layout/Tailwind concepts covered:**
+- Tailwind v4's spacing scale is a plain multiplier of the 4px base — real Figma offsets (52px, 64px) map directly to class names (`px-13`, `pt-16`) without needing arbitrary `[Npx]` brackets, same pattern established for the Header in Session 04.
+- `flex` only arranges **direct children** — grouping the paragraph-03 + Founder text into a wrapping `<div>` was necessary so the outer `<section>` sees exactly two children (text block, photo) instead of five separate ones.
+- `w-fit mx-auto` on the `<hgroup>` shrinks the container to its widest line ("Our Vision") and centers that block — since text inside stays left-aligned by default, "ABOUT" naturally lands flush with the left edge of "Our Vision" with no absolute positioning needed.
+- A visible left-alignment gap remained even after that fix — not a CSS bug. Bebas Neue (like most display fonts) has inherent glyph side-bearing, most visible on the "O". Same category of issue as the Logo's "Management" vertical gap in Session 04: not a computable value, tuned by eye with a small negative margin.
+- Tailwind's named text-size scale tops out at `text-9xl` (128px) — "Our Vision" needed bigger, so Miguel used an arbitrary value (`text-[12rem]`) directly rather than extending `@theme`, since it's a one-off decision he's free to revisit if Contact's headline needs the identical value later.
+- **Background color placement**: `bg-vvook-black text-white` was added to `<body>` in `layout.tsx` (global), not scoped to just `<main>` — because `Header` has no background of its own and would otherwise show through as white on top of a black page. This works today because only About and Contact exist, and both want black. **Known future conflict, not solved yet**: Home is planned with a yellow background, which will clash with this global black. Two candidate fixes already discussed: Next.js route groups (each with its own layout/background), or the previously-noted idea of a transparent, `mix-blend-mode`-driven Header that floats over Home's photo grid. Deliberately deferred — solving it now would be designing for a page that doesn't exist in code yet.
+
+---
+
+### 5. Commits this session
+
+Four separate commits, split by work unit rather than lumped together (Sanity config vs. schema vs. components vs. page content are different concerns):
+- `chore: switch Sanity project to Boris's account`
+- `feat: add instagram field to talent schema`
+- `feat: add Header/Logo components and wire into root layout`
+- `feat: build About page structure and content`
+
+**Left uncommitted on purpose:**
+- `src/app/contact/page.tsx` — created but completely empty (0 bytes, no default export). Committing it as-is would break `next build`, since Next.js requires every `page.tsx` to have a default export. Needs at least a placeholder component before it's safe to commit.
+- `Makefile` (empty, a leftover scaffold file the original Phase 0 plan called out for deletion — never actually deleted) and `about us.docx` (a content reference document, not source code) — both intentionally left untracked, not added to git.
+
+---
+
+### Pending — Next Session
+
+- [ ] Verify Logo.tsx's actual size (54/14 vs. the decided 64/18) against the live Header
+- [ ] Finish About's Founder block typography (font/color classes not applied yet to `<h2>`, "Boris Kralj", "Est. 2024")
+- [ ] Add Boris's real photo once received, uncomment and wire up the `Image` component
+- [ ] Give `contact/page.tsx` at least a placeholder default export before the next commit
+- [ ] Build Contact page structure (booking form, contact block, address, photo)
+- [ ] Implement nav active-state (yellow + underline on current page) in `NavLink`
+- [ ] Mobile header variant (hamburger + centered logo) — breakpoint still unconfirmed, no tablet Figma frame exists
+- [ ] Confirm real page list/structure with the client
+- [ ] Transfer Sanity project ownership to Boris once he's responsive (still blocked on Administrator role)
+- [ ] Prettier (low-priority chore)
+- [ ] Merge `dev` → `main` once there's something real worth releasing
