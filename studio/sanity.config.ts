@@ -7,7 +7,7 @@ export default defineConfig({
   name: 'default',
   title: 'Vvook management',
 
-  projectId: 'w0ka7cdd',
+  projectId: 'sysdxpdd',
   dataset: 'production',
 
   plugins: [structureTool(), visionTool()],
