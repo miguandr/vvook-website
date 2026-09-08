@@ -14,6 +14,7 @@ export default defineType({
 		defineField({ name: 'shoes', type: 'number' }),
 		defineField({ name: 'suit', type: 'number' }),
 		defineField({ name: 'dress', type: 'number' }),
+		defineField({ name: 'instagram', type: 'url' }),
 	],
 });
 
