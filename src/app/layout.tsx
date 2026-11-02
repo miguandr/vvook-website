@@ -1,39 +1,33 @@
 import type { Metadata } from "next";
-import { DM_Mono } from "next/font/google";
-import { Bebas_Neue } from "next/font/google";
-import { Anonymous_Pro } from "next/font/google";
+import { Playfair_Display } from "next/font/google";
+import { Inconsolata } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 
-const bebasNeue = Bebas_Neue({
+const playfairDisplay = Playfair_Display({
 	weight: "400",
 	subsets: ["latin"],
-	variable: "--font-bebas",
+	variable: "--font-playfair",
 });
 
-const dmMono = DM_Mono({
-	weight: "500",
-	subsets: ["latin"],
-	variable: "--font-dm",
-})
-
-const anonymousPro = Anonymous_Pro({
+const inconsolata = Inconsolata({
 	weight: ["400", "700"],
 	subsets: ["latin"],
-	variable: "--font-anonymous",
+	variable: "--font-inconsolata",
 })
 
 
 export const metadata: Metadata = {
   title: "Vvook Management",
   description: "Berlin based talent management",
+  authors: [{ name: "Miguel Andrade" }],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${bebasNeue.variable} ${dmMono.variable} ${anonymousPro.variable} h-full antialiased`}
+      className={`${inconsolata.variable} ${playfairDisplay.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-vvook-black text-white">
 		<Header />
