@@ -45,15 +45,19 @@ export default async function Home() {
 	const desktopSplit = distribute(talents, desktopColumns);
 
 	const Photo = ({ talent, priority }: { talent: (typeof talents)[number]; priority?: boolean }) => (
-		
-		<Image
-			src={urlFor(talent.mainPhoto).width(400).height(530).url()}
-			alt={talent.name ?? "Talent"}
-			width={400}
-			height={530}
-			priority={priority}
-			className="mb-4 h-auto w-full"
-		/>
+		<div className="group relative mb-4 overflow-hidden">
+			<Image
+				src={urlFor(talent.mainPhoto).width(400).height(530).url()}
+				alt={talent.name ?? "Talent"}
+				width={400}
+				height={530}
+				priority={priority}
+				className="mb-1 h-auto w-full transition-transform duration-300 group-hover:scale-110 md:group-hover:animate-focus-pull"
+			/>
+			<span className="font-menu font-semibold absolute top-2 right-2 uppercase text-vvook-black opacity-100 transition-opacity duration-300 md:opacity-0 md:group-hover:opacity-100 md:group-hover:animate-focus-pull">
+				{talent.name}
+			</span>
+		</div>
 	);
 
 	const threeColumnClass =
