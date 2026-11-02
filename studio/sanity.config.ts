@@ -10,7 +10,28 @@ export default defineConfig({
   projectId: 'sysdxpdd',
   dataset: 'production',
 
-  plugins: [structureTool(), visionTool()],
+  plugins: [
+    structureTool({
+      structure: (S) =>
+        S.list()
+          .title('Content')
+          .items([
+            S.listItem()
+              .title('Homepage Settings')
+              .id('homepageSettings')
+              .child(
+                S.document()
+                  .schemaType('homepageSettings')
+                  .documentId('homepageSettings')
+              ),
+            S.divider(),
+            ...S.documentTypeListItems().filter(
+              (item) => item.getId() !== 'homepageSettings'
+            ),
+          ]),
+    }),
+    visionTool(),
+  ],
 
   schema: {
     types: schemaTypes,

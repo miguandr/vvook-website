@@ -15,6 +15,26 @@
 export declare const internalGroqTypeReferenceTo: unique symbol;
 
 // Source: schema.json
+export type TalentReference = {
+  _ref: string;
+  _type: "reference";
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: "talent";
+};
+
+export type HomepageSettings = {
+  _id: string;
+  _type: "homepageSettings";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  orderedTalents?: Array<
+    {
+      _key: string;
+    } & TalentReference
+  >;
+};
+
 export type SanityImageAssetReference = {
   _ref: string;
   _type: "reference";
@@ -51,6 +71,7 @@ export type Talent = {
   shoes?: number;
   suit?: number;
   dress?: number;
+  instagram?: string;
 };
 
 export type SanityImageCrop = {
@@ -172,12 +193,28 @@ export type Slug = {
   source?: string;
 };
 
-export type AllSanitySchemaTypes = SanityImageAssetReference | Talent | SanityImageCrop | SanityImageHotspot | SanityImagePaletteSwatch | SanityImagePalette | SanityImageDimensions | SanityImageMetadata | SanityFileAsset | SanityAssetSourceData | SanityImageAsset | Geopoint | Slug;
+export type AllSanitySchemaTypes =
+  | TalentReference
+  | HomepageSettings
+  | SanityImageAssetReference
+  | Talent
+  | SanityImageCrop
+  | SanityImageHotspot
+  | SanityImagePaletteSwatch
+  | SanityImagePalette
+  | SanityImageDimensions
+  | SanityImageMetadata
+  | SanityFileAsset
+  | SanityAssetSourceData
+  | SanityImageAsset
+  | Geopoint
+  | Slug;
 
 // Source: ../src/sanity/lib/queries.ts
 // Variable: TALENT_GRID_QUERY
-// Query: *[_type == "talent"]{ name, mainPhoto }
+// Query: *[_type == "talent"]{ _id, name, mainPhoto }
 export type TALENT_GRID_QUERY_RESULT = Array<{
+  _id: string;
   name: string | null;
   mainPhoto: {
     asset?: SanityImageAssetReference;
@@ -188,11 +225,31 @@ export type TALENT_GRID_QUERY_RESULT = Array<{
   } | null;
 }>;
 
+// Source: ../src/sanity/lib/queries.ts
+// Variable: HOMEPAGE_SETTINGS_QUERY
+// Query: *[_type == "homepageSettings"][0]{		orderedTalents[]->{_id, name, mainPhoto }	}
+export type HOMEPAGE_SETTINGS_QUERY_RESULT = {
+  orderedTalents: Array<{
+    _id: string;
+    name: string | null;
+    mainPhoto: {
+      asset?: SanityImageAssetReference;
+      media?: unknown;
+      hotspot?: SanityImageHotspot;
+      crop?: SanityImageCrop;
+      _type: "image";
+    } | null;
+  }> | null;
+} | null;
+
 // Query TypeMap
-import "@sanity/client";
-declare module "@sanity/client" {
+declare global {
   interface SanityQueries {
-    "*[_type == \"talent\"]{ name, mainPhoto }": TALENT_GRID_QUERY_RESULT;
+    '*[_type == "talent"]{ _id, name, mainPhoto }': TALENT_GRID_QUERY_RESULT;
+    '\n\t*[_type == "homepageSettings"][0]{\n\t\torderedTalents[]->{_id, name, mainPhoto }\n\t}\n': HOMEPAGE_SETTINGS_QUERY_RESULT;
   }
 }
-
+// Lets @sanity/client releases that predate the global registry read it too
+declare module "@sanity/client" {
+  interface SanityQueries extends globalThis.SanityQueries {}
+}
