@@ -17,3 +17,19 @@
 		font-size: 14px;
 	}
 }
+
+@keyframes focus-pull {
+	0% {
+		filter: blur(0);
+	}
+	40% {
+		filter: blur(6px);
+	}
+	100% {
+		filter: blur(0);
+	}
+}
+
+@utility animate-focus-pull {
+	animation: focus-pull 0.4s ease-out;
+}
