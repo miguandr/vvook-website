@@ -33,6 +33,17 @@ export default defineConfig({
     visionTool(),
   ],
 
+  document: {
+    newDocumentOptions: (prev) =>
+      prev.filter((item) => item.templateId !== 'homepageSettings'),
+      actions: (prev, { schemaType }) =>
+        schemaType === 'homepageSettings'
+          ? prev.filter(({ action }) =>
+            !action || !['delete', 'duplicate', 'unpublish'].includes(action)
+          )
+      : prev,
+  },
+
   schema: {
     types: schemaTypes,
   },
