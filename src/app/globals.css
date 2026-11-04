@@ -31,5 +31,5 @@
 }
 
 @utility animate-focus-pull {
-	animation: focus-pull 0.4s ease-out;
+	animation: focus-pull 0.3s ease-out;
 }
