@@ -217,11 +217,101 @@ After that, `sanity dev` keeps both `schema.json` and `sanity.types.ts` up to da
 
 ---
 
-## 7. Not done yet
+## 8. Client-controlled ordering — the `homepageSettings` singleton
+
+The Home page grid needs to show models in whatever order Boris wants — "best models first," changeable any time, without a developer. Two options were considered and rejected before landing on this one:
+
+- **A `priority` number on each `talent`** — simple, but inserting or removing a model in the middle means renumbering everything after it by hand. Exactly the WordPress-drag-and-drop experience Boris was used to, lost.
+- **Relying on `_id` or creation order** — `_id` is an internal identifier with no meaningful order; it's not something an editor should ever have to think about.
+
+**The actual solution**: a single document, `homepageSettings`, with one field — `orderedTalents`, an `array` of `reference`s pointing at `talent` documents (`studio/schemaTypes/homepageSettings.ts`):
+
+```ts
+defineField({
+  name: 'orderedTalents',
+  type: 'array',
+  of: [{ type: 'reference', to: [{ type: 'talent' }] }],
+  options: { layout: 'grid' },
+  validation: (Rule) => Rule.unique(),
+})
+```
+
+Sanity Studio renders an `array` of `reference`s with **native drag-and-drop reordering**, for free, no plugin required — Boris drags models into place directly, no numbers involved anywhere. `Rule.unique()` stops the same model from being dragged into the list twice by accident.
+
+### How the data actually flows — references vs. the data itself
+
+`orderedTalents` stores only **pointers** (`_ref`, an ID) — not the talent's name, photo, or anything else. Querying it and getting back real model data requires **dereferencing**, GROQ's `->` operator:
+
+```groq
+*[_type == "homepageSettings"][0]{
+  orderedTalents[]->{_id, name, mainPhoto}
+}
+```
+
+`orderedTalents[]` is the array of pointers; `->` says "go fetch the real document each pointer points at"; `{_id, name, mainPhoto}` is which fields to pull once resolved. Critically, **this dereferencing happens in GROQ, on Sanity's server** — by the time `getHomepageTalents()` gets the response back, it's already a plain array of full `{_id, name, mainPhoto}` objects. The application code never "follows a pointer" itself; it only ever receives already-resolved data. This is the same relationship as a pointer and `*ptr` in C — `orderedTalents` is the array of addresses, `->` is the dereference, except the dereference is performed by the database query itself, not by application code.
+
+### Enforcing "exactly one" document
+
+A plain `document` schema type allows unlimited instances. `homepageSettings` needs exactly one, forever. Sanity has no schema-level "singleton" flag — it's enforced entirely through **Studio UI configuration**, in `studio/sanity.config.ts`, in three separate places (each closing a different door a careless click could open):
+
+1. **Structure Builder pins a fixed document ID**, instead of offering a list-and-create flow:
+   ```ts
+   structureTool({
+     structure: (S) =>
+       S.list().title('Content').items([
+         S.listItem().title('Homepage Settings').id('homepageSettings')
+           .child(S.document().schemaType('homepageSettings').documentId('homepageSettings')),
+         S.divider(),
+         ...S.documentTypeListItems().filter((item) => item.getId() !== 'homepageSettings'),
+       ]),
+   })
+   ```
+   Opening "Homepage Settings" from the sidebar always opens the SAME document (same literal ID `'homepageSettings'`) — since document IDs are unique, a second one can never exist through this path.
+
+2. **`document.newDocumentOptions`** removes `homepageSettings` from Studio's *global* "create new" search (the generic `+` button available everywhere, independent of the custom sidebar menu above):
+   ```ts
+   document: {
+     newDocumentOptions: (prev) => prev.filter((item) => item.templateId !== 'homepageSettings'),
+   }
+   ```
+   Without this, the sidebar trick alone can be bypassed — the global creator doesn't know or care about the custom Structure menu.
+
+3. **`document.actions`** removes the Delete/Duplicate/Unpublish buttons specifically when viewing a `homepageSettings` document, leaving every other document type (like `talent`) completely untouched:
+   ```ts
+   document: {
+     actions: (prev, { schemaType }) =>
+       schemaType === 'homepageSettings'
+         ? prev.filter(({ action }) => !action || !['delete', 'duplicate', 'unpublish'].includes(action))
+         : prev,
+   }
+   ```
+
+Three independent guardrails, because Sanity Studio has three independent ways to create or destroy a document — closing only one would still leave the singleton breakable.
+
+### The orphaned-model problem
+
+If Boris creates a new `talent` but forgets to drag it into `orderedTalents`, that model would silently never appear on the site — no error, just missing. `getHomepageTalents()` defends against this by fetching *all* talents separately and appending any that aren't yet in the ordered list, so a forgotten model shows up (at the end) rather than disappearing:
+
+```ts
+const [settings, allTalents] = await Promise.all([
+  client.fetch(HOMEPAGE_SETTINGS_QUERY),
+  client.fetch(TALENT_GRID_QUERY),
+]);
+const ordered = settings?.orderedTalents ?? [];
+const orderedIds = new Set(ordered.map((t) => t._id));
+const unordered = allTalents.filter((t) => !orderedIds.has(t._id));
+return [...ordered, ...unordered];
+```
+
+Also worth remembering: Sanity itself refuses to **delete** a `talent` that's still referenced by `orderedTalents` (dangling-reference protection, built in) — the reference has to be removed from the singleton first, then the talent can be deleted.
+
+---
+
+## 9. Not done yet
 
 - [x] Move `projectId`/`dataset` into environment variables
+- [x] Image URL builder (`@sanity/image-url`) — `src/sanity/lib/image.ts`, `urlFor(source).width(N).height(N).url()`
 - [ ] Extract the `client.fetch(...)` call out of `page.tsx` into its own function — needed before it can be unit tested, since Vitest can't render async Server Components directly
 - [ ] First real unit test (mocked Sanity client)
 - [ ] `TALENT_DETAIL_QUERY` (or similar) — full fields for a single talent, for the model detail page
-- [ ] Image URL builder (`@sanity/image-url`) — `mainPhoto` currently only exposes an internal `_ref`, not a usable URL
-- [ ] Transfer the Sanity project from Miguel's personal account to a Sanity Organization owned by Boris
+- [ ] Transfer the Sanity project from Miguel's personal account to a Sanity Organization owned by Boris (now Boris's own account directly, per Session 05 — ownership itself still not formally org-based)

@@ -514,3 +514,123 @@ While closing out the session, tried to apply the final hover-name JSX edit dire
 - [ ] Transfer Sanity project ownership to Boris once he's responsive (still blocked on Administrator role).
 - [ ] Prettier (low-priority chore).
 - [ ] Merge `dev` → `main` once there's something real worth releasing.
+
+---
+
+## Session 07 — 2026-11-04
+
+### Goal
+
+Do the dedicated conceptual walkthrough of `page.tsx` and the `homepageSettings` singleton requested at the end of Session 06 — real first-principles teaching, not just a feature tour. Along the way: close out the remaining grid polish, harden the Sanity schemas properly, add real protections against editor mistakes in the Studio, and start the Footer.
+
+This was an unusually long, concept-dense session — Miguel asked explicitly that technical decisions be documented clearly enough to reuse as portfolio/interview material later, which shaped how much explanation made it into this entry (and into `docs/SANITY.md §8`, which now has the full write-up of the ordering singleton specifically for that purpose).
+
+---
+
+### 1. JavaScript/TypeScript fundamentals, taught from the ground up
+
+Miguel comes from 42 (C/C++ background) — strong on pointers, manual memory reasoning, and strict sequential execution, but this was his first real exposure to several JS/TS-specific ideas. Worth recording *how* these landed, since some explanations needed two or three passes before they stuck:
+
+- **`let` vs `const`**: `let` allows reassignment (needed for loop counters); `const` doesn't. Not a type distinction, a reassignability one.
+- **JS has no types by itself; TypeScript adds a compile-time checking layer on top.** `any` explicitly turns that checking off for a value — an escape hatch to avoid, not a normal type.
+- **Generics (`<T>`)** are TypeScript's equivalent of C++ templates: a placeholder for "whatever type you hand me," inferred automatically from the argument at each call site — `distribute(talents, 2)` never needs to write `distribute<Talent>(...)` by hand. Landed only after dropping the C++ comparison (too rusty) and rebuilding from a tiny `firstItem<T>(arr: T[]): T` example instead.
+- **`Array.from({length: N}, fn)`**: the first argument doesn't have to be a real array — `{length: N}` is a common trick for "N fake slots," and the mapper function runs once per slot, receiving `(value, index)` — `value` is only meaningful if the source had real data to give.
+- **A real gotcha surfaced from this**: `new Array(N).fill([])` would put the *same* array reference in every slot (like N pointers to the same memory address) — mutating one mutates all of them. `Array.from(..., () => [])` avoids this because the function genuinely re-executes per slot, allocating a fresh array each time.
+- **Post-increment (`items[index++]`)** behaves exactly like C: use the current value, then increment. Needed no real re-teaching — direct transfer from his C background.
+- **Scope**: a variable is only visible inside the block it's declared in (and anything nested inside that block) — Miguel independently generalized this correctly ("like a variable declared inside a loop, used outside it") when working out why the `Photo` component had to be defined *inside* `Home()` (it references `typeof talents`, and `talents` only exists in `Home`'s scope — not because of data timing, a common early mix-up, but because of **where the declaration is visible**, at compile time, regardless of what the variable holds at runtime).
+- **Destructuring**, both forms: `const [m1, m2] = distribute(...)` (array, by position) and `const { talent, priority } = props` (object, by name) — the same underlying idea, unpacking a collection into named variables instead of indexing into it repeatedly.
+- **Type guards for null-narrowing**: `array.filter((t) => t.mainPhoto)` does **not** change the array's TypeScript type, even though it's correct at runtime — `.filter()` only narrows the result type when given an actual type-predicate function (`x is Y`). The real fix:
+  ```ts
+  type Talent = Awaited<ReturnType<typeof getHomepageTalents>>[number];
+  function hasPhoto(talent: Talent): talent is Talent & { mainPhoto: NonNullable<Talent["mainPhoto"]> } {
+    return talent.mainPhoto != null;
+  }
+  // .filter(hasPhoto), not .filter((t) => t.mainPhoto)
+  ```
+  `ReturnType` + `Awaited` together unwrap "the function's return type" past the `Promise` an `async` function always wraps it in.
+- **Spread (`...arr`)**: "unpacks" an array's elements in place — `[...ordered, ...unordered]` concatenates two arrays without needing to know either one's length ahead of time. Same operator already used earlier, in `sanity.config.ts`'s `...S.documentTypeListItems().filter(...)`.
+
+---
+
+### 2. `distribute()` and `pickColumnCount()`, traced by hand
+
+Walked both functions with concrete numeric traces (8 items / 3 columns for `distribute`; `total=21` and `total=7` for `pickColumnCount`) rather than describing them abstractly — this is what actually got the logic to click, more than the code itself.
+
+**One real simplification landed this session**: `pickColumnCount`'s original fallback (`return 2` for desktop) turned out to be mathematically unreachable *and* functionally dead in the render (the JSX only ever branches on "is it 4?", collapsing 3-and-2 into the same visual output regardless). Proven, not just asserted: for any even `total`, `total % 4` is always 0 or 2 (always "good"), so `n=4` always resolves before the loop could ever reach `n=2`; for any odd `total`, `total % 2` is always 1 (always "bad"), so `n=2` can never succeed inside the loop either. Simplified to a floor of 3, matching the actual design rule ("desktop never shows fewer than 3 columns"):
+```ts
+function pickColumnCount(total: number, max: number): number {
+	for (let n = max; n >= 3; n--) {
+		if (total % n % 2 === 0) return n;
+	}
+	return 3;
+}
+```
+
+**A second real rule emerged from a live example** (22 models landing on a 3-column tablet view): a remainder of exactly 1 isn't just "acceptable but not ideal" — with only 3 columns, it leaves a single photo stranded on the far left with a visible gap on the right. Fix: when `remainder === 1 && columnCount === 3`, send the lone leftover to the *middle* column (index 1) instead of the default leftmost one, so it reads as a centered, intentional accent rather than an error:
+```ts
+const tailOrder =
+	remainder === 2 ? [0, 2]
+	: remainder === 1 && columnCount === 3 ? [1]
+	: Array.from({ length: remainder }, (_, i) => i);
+```
+
+---
+
+### 3. CSS deep-dives — three real things learned by testing, not assuming
+
+**`group`/`group-hover` parent-child mechanics.** `group` marks a container; any descendant using `group-hover:` reacts to *that container's* hover state, not its own — this is how a photo (`Image`) and its overlaid name (`span`, `position: absolute`, physically on top of part of the photo) can zoom/reveal together from a single hover anywhere on the card, even over the part where the name's own hitbox would otherwise "steal" the pointer from the image underneath.
+
+**Margin stacking vs. collapsing, with `overflow-hidden` as the deciding factor.** A child's `mb-1` and its parent's `mb-4` can either *collapse* into the larger single value, or *stack* additively — `overflow: hidden` on the parent creates a new block formatting context, which blocks collapsing. Since the `Photo` card already has `overflow-hidden` (for the zoom-crop effect), its internal spacing was quietly stacking rather than collapsing — a real, slightly unintuitive CSS interaction, not a typo.
+
+**`next/image`'s `width`/`height` props vs. Tailwind's `h-auto w-full`, and a real resolution bug.** The props set the *intrinsic aspect ratio* (for layout-shift prevention and file optimization); the CSS classes set the *actual rendered size* on screen, which varies by breakpoint. These aren't redundant, they're two different jobs. The real bug this session: Sanity's own `urlFor(...).width(400).height(530)` was independently capping the **delivered file's real pixel dimensions** — on a wide desktop column (or any retina/high-DPI screen), the browser was upscaling a genuinely-too-small source image, producing the "soft/blurry" look Miguel noticed. Fixed by requesting a larger source (`.width(800).height(1060)`, double, for retina headroom) while leaving the `next/image` props as the smaller display-ratio hint.
+
+**Verified, not assumed: Tailwind's `hover:`/`group-hover:` are already wrapped in `@media (hover: hover)`.** Miguel's original ask — "tablet has no real hover either, and resizing a desktop window shouldn't suddenly disable hover effects" — pointed at a real gap in using `md:`/`lg:` (viewport-width breakpoints) to gate hover-only interactions. Rather than assume Tailwind's behavior from memory, compiled a real test case through `@tailwindcss/cli` and inspected the output CSS directly:
+```css
+@media (hover: hover) {
+  :is(:where(.group):hover .group-hover\:scale-110) { ... }
+}
+```
+This confirmed `group-hover:` already only fires on devices with genuine pointer/hover capability, **regardless of viewport width** — so the width-based breakpoint prefixes (`md:group-hover:`, `lg:group-hover:`) could be dropped entirely in favor of plain `group-hover:`, which reacts correctly to device capability on any screen size. The remaining piece — the *rest* state (invisible until hovered) — still needs an explicit capability check, since that's a different question ("can this device hover at all?") from "is it hovering right now?": `[@media(hover:hover)]:opacity-0`, Tailwind's arbitrary-variant syntax for a raw CSS media feature, also verified by compiling it directly rather than guessing the syntax.
+
+---
+
+### 4. Sanity: schema hardening and real Studio protections
+
+Miguel independently (without guided code) enriched both schemas — titles, field descriptions written for Boris (a non-technical editor) specifically, a `slug` field on `talent` with custom accent-stripping slugify logic, `hotspot`/`lqip` options on images, `preview` configs so documents show meaningfully in Studio lists, and `Rule.unique()` on `orderedTalents` to block duplicate entries. Also added real UI-level protections against editor mistakes beyond the singleton-pinning from Session 06 — closing two doors the Structure Builder trick alone didn't cover (the global "+" document creator, and the Delete/Duplicate/Unpublish actions on an already-open singleton). Full write-up, including the "why three separate guardrails" reasoning: **`docs/SANITY.md`, §8**.
+
+Also fixed: new `talent` documents that exist but were never dragged into `orderedTalents` no longer vanish from the site silently — `getHomepageTalents()` now backfills any "orphaned" talents at the end of the list (detail in `SANITY.md §8` too).
+
+---
+
+### 5. Footer — started, first real use of Playfair Display
+
+Reviewed the footer sections of the same Grid Figma frames used for the Home build (desktop: `917:1049`; mobile: `977:1380`). Desktop footer: a static (for now) marquee-style credit ticker, a large centered email in **Playfair Display** (loaded since early in the project, unused until now) with a smaller phone number below, and a bottom row (Impressum/Privacy Policy/Terms of Use, address, "site by Miguel Andrade"). Mobile footer is drastically simpler — just a copyright line (built with `{new Date().getFullYear()}` instead of a hardcoded year) and the same credit line. Component started (`src/components/Footer.tsx`), mobile content in place; desktop content not yet built.
+
+---
+
+### 6. Commits this session
+
+Nine commits, grouped by concern rather than by when the edit happened chronologically:
+- `feat: enrich talent and homepageSettings schemas with validation, previews, and slug field`
+- `feat: restrict Studio document actions to protect the singleton and talent list`
+- `chore: bump Sanity Studio dependencies`
+- `fix: backfill talents missing from the homepage order`
+- `fix: complete LCP priority coverage and polish grid interactions`
+- `fix: adjust Header spacing for desktop breakpoint`
+- `chore: allow local network origin for mobile dev testing`
+- (plus two small lint/import fixes from the top of the session)
+
+`npm run build` and `npm run lint` both verified clean before pushing.
+
+---
+
+### Pending — Next Session
+
+- [ ] Finish the Footer: desktop content (ticker, email/phone block, legal links row), wire `<Footer />` into `layout.tsx` next to `<Header />`.
+- [ ] Legal pages themselves (`/legal/privacy`, `/legal/terms` or similar) don't exist yet — the footer will link to them.
+- [ ] Verify Logo.tsx's actual size (54/14 vs. 64/18) — still carried forward, unresolved since Session 05.
+- [ ] About/Contact — still blocked on Miguel's redesign, do not build from old Figma references.
+- [ ] Model-detail page (`[slug]`) — Figma frame `453:1536` already reviewed, not built.
+- [ ] (Tentative, not scheduled) Scroll-driven focus-pull on mobile via `IntersectionObserver`.
+- [ ] Transfer Sanity project ownership to a proper Organization under Boris (still just his personal account).
+- [ ] Prettier (low-priority chore).
