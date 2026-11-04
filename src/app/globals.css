@@ -1,22 +1,35 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme {
 	--color-vvook-yellow: #faff00;
+	--color-vvook-white: #f1f1f1;
 	--color-vvook-black: #080808;
-	--color-vvook-grey: #C3BEBE;
-	--color-vvook-lightgrey: #d9d9d9;
-	--font-logo: var(--font-bebas), sans-serif;
-	--font-display: var(--font-anonymous), monospace;
-	--font-menu: var(--font-dm), monospace;
+	--color-vvook-grey: #8C8C8C;
+	--font-display: var(--font-inconsolata), monospace;
+	--font-serif: var(--font-playfair), serif;
 }
 
+@utility font-menu {
+	font-family: var(--font-inconsolata), monospace;
+	font-size: 10px;
 
-body {
-  background: var(--background);
-  color: var(--foreground);
+	@media (width >= 48rem) {
+		font-size: 14px;
+	}
+}
+
+@keyframes focus-pull {
+	0% {
+		filter: blur(0);
+	}
+	40% {
+		filter: blur(6px);
+	}
+	100% {
+		filter: blur(0);
+	}
+}
+
+@utility animate-focus-pull {
+	animation: focus-pull 0.3s ease-out;
 }
