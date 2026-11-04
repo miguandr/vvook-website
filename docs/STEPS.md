@@ -602,15 +602,27 @@ Also fixed: new `talent` documents that exist but were never dragged into `order
 
 ---
 
-### 5. Footer — started, first real use of Playfair Display
+### 5. Footer — built end to end, first real use of Playfair Display
 
-Reviewed the footer sections of the same Grid Figma frames used for the Home build (desktop: `917:1049`; mobile: `977:1380`). Desktop footer: a static (for now) marquee-style credit ticker, a large centered email in **Playfair Display** (loaded since early in the project, unused until now) with a smaller phone number below, and a bottom row (Impressum/Privacy Policy/Terms of Use, address, "site by Miguel Andrade"). Mobile footer is drastically simpler — just a copyright line (built with `{new Date().getFullYear()}` instead of a hardcoded year) and the same credit line. Component started (`src/components/Footer.tsx`), mobile content in place; desktop content not yet built.
+Reviewed the footer sections of the same Grid Figma frames used for the Home build (desktop: `917:1049`; mobile: `977:1380`), then built `src/components/Footer.tsx` fully and wired it into `layout.tsx` next to `<Header />`.
+
+**A real misunderstanding of "transparent," caught by comparing screenshots side by side.** The mobile footer was assumed to mean "no background of its own" (falling through to `body`'s constant black) — but Figma's intent was different: the footer should feel like a *continuation* of whatever the page's own background is (yellow on Home, black elsewhere), not a visually separate bar. Fixed by giving the mobile footer its own route-aware background (`isHome ? bg-vvook-yellow : bg-vvook-black`), paired with the same route-aware text color already in place — getting this wrong first is exactly why `usePathname`/`"use client"` stayed on `Footer`, where the first instinct was to simplify it away since "the footer's background never changes" (true for desktop, false for mobile).
+
+**Grid alignment gotchas, same two every time something has mismatched line-counts:**
+- `items-center` on a grid centers each column against the *tallest* column in that row — with a 1-line copyright next to a 2-line "Site by / Miguel Andrade" block, the single line centers against the middle of the pair instead of lining up with the bottom line. Fixed with `items-end`.
+- `justify-self-end` positions a *box* at the edge of its grid cell — it does nothing to the *text alignment* inside that box. With two lines of different lengths ("Site by" shorter than "Miguel Andrade"), the box was right-aligned but the text inside stayed left-aligned, so the right edges didn't actually line up. Needed `text-right` on top, a different property for a different job.
+
+**Desktop content** — ticker, email/phone block, legal links, address, credit:
+- **Whitespace collapsing.** Figma's ticker text has deliberate runs of extra spaces around the `——` separators; HTML collapses *any* run of whitespace to a single space by default, which quietly ate them. `whitespace-pre` (same CSS as a `<pre>` tag) preserves spacing exactly as written in the source — paired with `overflow-hidden` since there's no scroll animation yet (that's Phase 5) and the line is long enough to otherwise overflow the viewport.
+- **`mailto:` links.** The email uses a plain `<a>` (not `next/link`'s `Link` — it's not navigating to an in-app route) with `href="mailto:..."`, which opens the visitor's email client instead of loading a page. Same tag as an external link, different URL scheme.
+- **Playfair Display's first real use**, on the big email text (`font-serif`, the token name chosen back when the font was loaded with no concrete use case yet).
+- Impressum/Privacy Policy/Terms of Use are real `next/link` `Link`s, pointing at `/legal/impressum`, `/legal/privacy`, `/legal/terms` — Miguel proactively created those three routes himself, each already a valid `return null;` stub (no repeat of the earlier empty-`page.tsx`-breaks-the-build mistake), content to be written later.
 
 ---
 
 ### 6. Commits this session
 
-Nine commits, grouped by concern rather than by when the edit happened chronologically:
+Eleven commits total, grouped by concern:
 - `feat: enrich talent and homepageSettings schemas with validation, previews, and slug field`
 - `feat: restrict Studio document actions to protect the singleton and talent list`
 - `chore: bump Sanity Studio dependencies`
@@ -618,16 +630,17 @@ Nine commits, grouped by concern rather than by when the edit happened chronolog
 - `fix: complete LCP priority coverage and polish grid interactions`
 - `fix: adjust Header spacing for desktop breakpoint`
 - `chore: allow local network origin for mobile dev testing`
+- `feat: add legal page stubs (privacy, terms, impressum)`
+- `feat: add Footer component with responsive mobile/desktop content`
 - (plus two small lint/import fixes from the top of the session)
 
-`npm run build` and `npm run lint` both verified clean before pushing.
+`npm run build` and `npm run lint` verified clean before every push. The `feat/static-layout` branch (which had accumulated work across three sessions, including one PR already merged mid-history) was finally merged and deleted; follow-up work continues on a fresh `feat/footer` branch — one branch per PR going forward, not one branch that keeps absorbing unrelated work.
 
 ---
 
 ### Pending — Next Session
 
-- [ ] Finish the Footer: desktop content (ticker, email/phone block, legal links row), wire `<Footer />` into `layout.tsx` next to `<Header />`.
-- [ ] Legal pages themselves (`/legal/privacy`, `/legal/terms` or similar) don't exist yet — the footer will link to them.
+- [ ] Write the actual content for `/legal/privacy`, `/legal/terms`, `/legal/impressum` — currently valid but empty (`return null;`) stubs.
 - [ ] Verify Logo.tsx's actual size (54/14 vs. 64/18) — still carried forward, unresolved since Session 05.
 - [ ] About/Contact — still blocked on Miguel's redesign, do not build from old Figma references.
 - [ ] Model-detail page (`[slug]`) — Figma frame `453:1536` already reviewed, not built.
