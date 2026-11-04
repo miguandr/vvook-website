@@ -16,8 +16,8 @@ export default function Header() {
 
 	return (
 		<header className="fixed top-0 inset-x-0 z-10">
-			<div className="grid grid-cols-3 items-center px-4 py-4">
-				<div className="flex gap-5">
+			<div className="grid grid-cols-3 items-center px-4 py-4 lg:px-16">
+				<div className="flex gap-5 md:gap-16 lg:gap-44">
 					<NavLink href="/" color={textColor}>MODELS</NavLink>
 					<a
 						href="https://www.instagram.com/vvookmanagement/"
@@ -31,7 +31,7 @@ export default function Header() {
 				<div className="justify-self-center">
 					<Link href="/"><Logo color={logoColor} /></Link>
 				</div>
-				<div className="flex gap-4 justify-self-end">
+				<div className="flex gap-4 md:gap-16 lg:gap-44 justify-self-end">
 					<NavLink href="/about" color={textColor}>ABOUT</NavLink>
 					<NavLink href="/contact" color={textColor}>CONTACT</NavLink>
 				</div>
