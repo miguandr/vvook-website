@@ -3,6 +3,7 @@ import { Playfair_Display } from "next/font/google";
 import { Inconsolata } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 const playfairDisplay = Playfair_Display({
 	weight: "400",
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-vvook-black text-white">
 		<Header />
 		{children}
+		<Footer />
 	  </body>
     </html>
   );
