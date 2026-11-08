@@ -18,16 +18,18 @@ export default async function Page({ params }: {params: Params}) {
 	const extraLabel = talent.dress != null ? "Dress" : "Suit";
 	const extraValue = talent.dress ?? talent.suit;
 	const thumbWidths = ["w-14", "w-11", "w-9", "w-7", "w-5.5", "w-4"];
-	const thumbBase = "clamp(90px, 40px + 4.9vw, 128px)";
-	const rightPhotos = talent.gallery?.slice(1, 6) ?? [];
-	const leftPhotos = talent.gallery?.slice(6, 11) ?? [];
+	const thumbBase = "clamp(60px, 40px + 7.5vw, 162px)";
+	const extraPhotos = talent.gallery?.slice(1) ?? [];
+	const halfCount = Math.min(5, Math.ceil(extraPhotos.length / 2));
+	const rightPhotos = extraPhotos.slice(0, halfCount);
+	const leftPhotos = extraPhotos.slice(halfCount, halfCount * 2);
 	const currentPosition = leftPhotos.length + 1;
 
 	return (
-		<main className="pt-10 md:pt-[clamp(60px,-72px+14.89vw,160px)]">
+		<main className="pt-8 overflow-x-hidden">
 			{/* Mobile/Tablet */}
-			<div className="flex items-center justify-center gap-2 -mb-1">
-				<h1 className="font-menu text-[16px] uppercase">
+			<div className="flex items-center justify-center gap-2 mb-3">
+				<h1 className="font-menu text-[20px] lg:text-[24px] uppercase">
 					{talent.name}
 				</h1>
 				{talent.instagram && (
@@ -35,6 +37,7 @@ export default async function Page({ params }: {params: Params}) {
 					href={talent.instagram}
 					target="_blank"
 					rel="noopener noreferrer"
+					className="md:hidden"
 					>
 					<InstagramIcon color="text-white"/>
 					</a>
@@ -115,59 +118,18 @@ export default async function Page({ params }: {params: Params}) {
 			{/* Desktop */}
 			<div className="hidden md:flex items-center w-full">
 				{/* Left Fan */}
-				{leftPhotos.length > 0 && (
-					<div className="flex-1 flex justify-end items-end">
-						{[...leftPhotos].reverse().map((photo, i) => {
-							const distance = leftPhotos.length - 1 - i;
-							return (
-								<div
-									key={i}
-									// className={`${i === 0 ? "" : "-ml-4"} shrink-0`}
-									style={{
-										width: `calc(${thumbBase} * ${1 - distance * 0.125})`,
-										marginLeft: i === 0 ? undefined : "clamp(-36px, -63.6px + 4.8vw, -6px)",
-										transform: `perspective(100px) rotateY(${distance === 0 ? 25 : 30}deg)`,
-										zIndex: 10 - distance,
-										filter: `brightness(${85 - distance * 15}%)`,
-									}}
-								>
-									<Image
-										src={urlFor(photo).width(300).height(500).url()}
-										alt=""
-										width={128}
-										height={213}
-										className="w-full h-auto"
-									/>
-								</div>
-							);
-						})}
-					</div>
-				)}
-
-				{/* Main Photo */}
-				{talent.gallery?.[0] && (
-					<Image
-						src={urlFor(talent.gallery[0]).width(900).height(1150).url()}
-						alt={talent.name ?? "Talent"}
-						width={448}
-						height={610}
-						className="w-[clamp(150px,118px+18.89vw,700px)] h-auto mx-1 z-20"
-						priority
-					/>
-				)}
-
-				{/* Right Fan */}
-				{rightPhotos.length > 0 && (
-					<div className="flex flex-1 items-end">
-						{[...rightPhotos].map((photo, i) => (
+				<div className="flex-1 flex justify-end items-end min-w-0 overflow-hidden py-20">
+					{leftPhotos.length > 0 && [...leftPhotos].reverse().map((photo, i) => {
+						const distance = leftPhotos.length - 1 - i;
+						return (
 							<div
 								key={i}
 								style={{
-									width: `calc(${thumbBase} * ${1 - i * 0.125})`,
-									marginLeft: i === 0 ? undefined : "clamp(-36px, -63.6px + 4.8vw, -6px)",
-									transform: `perspective(100px) rotateY(${i === 0 ? -25 : -30}deg)`,
-									zIndex: 10 - i,
-									filter: `brightness(${85 - i * 15}%)`,
+									width: `calc(${thumbBase} * ${1 - distance * 0.125})`,
+									marginLeft: i === 0 ? undefined : "clamp(-36px, -63.6px + 4.8vw, -5px)",
+									transform: `perspective(100px) rotateY(${distance === 0 ? 25 : 30}deg)`,
+									zIndex: 10 - distance,
+									filter: `brightness(${72 - distance * 12}%)`,
 								}}
 							>
 								<Image
@@ -178,13 +140,62 @@ export default async function Page({ params }: {params: Params}) {
 									className="w-full h-auto"
 								/>
 							</div>
-						))}
+						);
+					})}
+				</div>
+
+				{/* Main Photo */}
+				{talent.gallery?.[0] && (
+					<div className="relative aspect-900/1222 h-[clamp(400px,calc(100vh-120px),670px)] z-20">
+						<Image
+							src={urlFor(talent.gallery[0]).width(900).height(1222).url()}
+							alt={talent.name ?? "Talent"}
+							fill
+							className="object-contain"
+							priority
+						/>
+						<p className="absolute top-full left-0 font-menu text-[12px] lg:text-[14px] text-vvook-yellow">
+							{`${String(currentPosition).padStart(2, "0")}/${String(talent.gallery?.length ?? 0).padStart(2, "0")}`}
+						</p>
+						{talent.instagram && (
+							<a
+								href={talent.instagram}
+								target="_blank" rel="noopener noreferrer"
+								className="absolute top-full right-0 mt-1">
+								<InstagramIcon color="text-white" />
+							</a>
+						)}
 					</div>
+
 				)}
+
+				{/* Right Fan */}
+				<div className="flex flex-1 items-end min-w-0 overflow-hidden py-20">
+					{rightPhotos.length > 0 && [...rightPhotos].map((photo, i) => (
+						<div
+							key={i}
+							style={{
+								width: `calc(${thumbBase} * ${1 - i * 0.125})`,
+								marginLeft: i === 0 ? undefined : "clamp(-36px, -63.6px + 4.8vw, -5px)",
+								transform: `perspective(100px) rotateY(${i === 0 ? -25 : -30}deg)`,
+								zIndex: 10 - i,
+								filter: `brightness(${72 - i * 12}%)`,
+							}}
+						>
+							<Image
+								src={urlFor(photo).width(300).height(500).url()}
+								alt=""
+								width={128}
+								height={213}
+								className="w-full h-auto"
+							/>
+						</div>
+					))}
+				</div>
 			</div>
 
 			{/* Measuraments */}
-			<div className={`grid ${extraValue != null ? "grid-cols-6" : "grid-cols-5"} max-w-md mx-auto mt-6 mb-6 font-menu text-[12px] uppercase text-center text-vvook-grey`}>
+			<div className={`grid ${extraValue != null ? "grid-cols-6" : "grid-cols-5"} justify-items-center lg:gap-x-[clamp(92px,44.5px+4.64vw,128px)] max-w-md mx-auto mt-8 lg:mt-12 mb-4 font-menu text-[12px] lg:text-[14px] uppercase text-center justify-center text-vvook-grey`}>
 				<div><p>Height</p><p>{talent.height}</p></div>
 				<div><p>Chest</p><p>{talent.chest}</p></div>
 				<div><p>Waist</p><p>{talent.waist}</p></div>
