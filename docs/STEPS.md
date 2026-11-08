@@ -647,3 +647,93 @@ Eleven commits total, grouped by concern:
 - [ ] (Tentative, not scheduled) Scroll-driven focus-pull on mobile via `IntersectionObserver`.
 - [ ] Transfer Sanity project ownership to a proper Organization under Boris (still just his personal account).
 - [ ] Prettier (low-priority chore).
+
+---
+
+## Session 08 — 2026-11-08
+
+### Goal
+
+Pick up the model detail page (`[slug]`) where Session 07 left off — static layout only, interactivity deferred to the GSAP phase. Along the way: a deep conceptual detour into Promises and dynamic routes, a full Header redesign, Footer fixes, and a schema decision (merging `mainPhoto` into `gallery`) that the model page's gallery design made necessary.
+
+---
+
+### 1. Promises and dynamic route params, from first principles
+
+The `[slug]/page.tsx` signature (`{ params }: { params: Promise<{ slug: string }> }`) triggered a long, necessary detour — not just "how do I type this" but "what is a Promise, actually."
+
+Landed on two separate ideas that kept getting conflated:
+
+- **Having a parameter** and **being a Promise** are unrelated. `getTalentBySlug(slug: string)` has a parameter (`slug`) that is a plain string, not a Promise — proof that "needs an input" doesn't imply "needs unwrapping."
+- **Why Promises exist at all**: JavaScript is single-threaded. If a slow operation (a network call to Sanity) blocked the whole program until it finished, nothing else could run meanwhile. A Promise is a ticket handed back immediately so the program can keep doing other things while the real value is prepared in the background; `await` is the point where *you* choose to pause and wait for that specific ticket to resolve. The restaurant analogy landed: the ticket isn't for the customer, it's so the kitchen can serve other tables while your order cooks.
+- Next.js wraps `params` in a Promise *by framework convention*, not because reading a URL segment is actually slow — it does this uniformly across every dynamic page so it can treat static and dynamic rendering the same way internally. `Page({ params })` is never called by our own code; Next.js calls it, passing `{ params: <Promise resolving to { slug: "max-g" }> }` whenever a request matches `[slug]`.
+
+### 2. GROQ: aliasing a computed field
+
+`"mainPhoto": gallery[0]` in a GROQ projection creates a *virtual* key in the query result, computed on the fly, without that field existing in the schema. This is what let the `mainPhoto` → `gallery` schema merge (next section) happen with zero changes to `getHomepageTalents.ts` or the Home grid's `Photo` component — they still ask for `talent.mainPhoto`, the query just computes it differently now.
+
+### 3. Schema decision: `gallery[0]` is now the only cover photo
+
+Removed the separate `mainPhoto` field from `talent.ts`. Reasoning:
+
+- Two fields (`mainPhoto` + `gallery`) meant two sources of truth that could drift — Boris could, in principle, set a cover photo that isn't even in the gallery array.
+- More importantly: the planned Phase 5 page transition needs the exact same photo visible on the Home grid and as the model page's "position 1" photo, for a shared-element animation to look seamless. Two independent fields can't *guarantee* that; `gallery[0]` read in both places structurally can't drift.
+- Boris reorders via Sanity's native array drag-and-drop — same mechanism as `homepageSettings.orderedTalents` — to choose the cover; no custom tooling needed.
+- `npx sanity schema extract --force && npx sanity typegen generate` (from `studio/`) regenerates both the schema snapshot and `sanity.types.ts` — same trap as before: `schema.json` is a frozen snapshot, editing `talent.ts` alone doesn't update it.
+- `getTalents.ts` (an older, unused duplicate of `getHomepageTalents.ts`, never referenced outside its own test) was found and deleted while auditing for leftover `mainPhoto` references.
+
+### 4. Header: rebuilt as a fluid 12-column grid
+
+Inspired by how swoonnyc.com builds its header — `grid-cols-12`, one cell per nav item (2/2/4/2/2), spacing and the logo scaling continuously with `clamp()` instead of jumping at breakpoints. `Logo.tsx` changed from a fixed height to `w-full h-auto`, so its size now comes entirely from whatever width its parent cell gives it.
+
+This one redesign produced a long chain of real bugs, each worth remembering:
+
+- **`NavLink`'s signature changed** (from `color` to `className` + an `external` flag, to let Instagram share the same styling path as internal links) but the mobile block's calls weren't updated to match — a TypeScript error, not a runtime mystery, once traced.
+- **Missing `hidden md:grid`** on the new desktop `<nav>` meant it rendered unconditionally, stacked on top of the mobile block, on every screen size.
+- **A leftover bare `grid` class** sitting next to `hidden md:grid` — redundant, and only didn't break mobile because Tailwind happens to generate `.hidden` after `.grid` internally (confirmed by compiling a test case, not assumed).
+- **`font-menu`'s own font-size fought the new fluid `clamp()` size** — same property set twice, with Tailwind's generation order deciding the winner. Fixed by giving `fluidText` an `md:` prefix and letting `font-menu` keep its original two-tier size as the real default; only the Header overrides it from `md:` up.
+- **The 12-column grid breaks on true phone widths** — at 768px there's ~128px per 2-span column (plenty), but a phone has ~60-70px — not enough for "CONTACT". Resolved by giving mobile its own simple `flex` block, switching to the grid only from `md:` (not `lg:`, since `md:` is exactly where there's first enough room).
+- **Side padding and the Home grid's padding never matched** — the header's `clamp()` curve almost never lands on the grid's fixed `px-4/5/16`, so "MODELS" never quite aligned with the first photo. Fixed by copying the grid's literal breakpoint values instead of inventing a separate curve.
+- **`max-w-[1800px] mx-auto`** caps the header (and, separately, the 4-column Home grid) from growing forever on ultra-wide monitors — past 1800px the layout just stops growing and centers, keeping proportions sane.
+
+### 5. Footer: route-aware, and a full-bleed CSS trick
+
+- Footer now returns nothing outside the known static routes (`/`, `/about`, `/contact`, `/legal/*`) — the model page gets no footer at all, confirmed as the final design decision.
+- The decorative ticker needed to visually span the true viewport edge-to-edge while living inside a `max-w-[1800px] mx-auto` parent. Standard trick: `w-screen` (ignore the parent's width entirely) + `mx-[calc(50%-50vw)]` (margin that re-centers the now-too-wide element against the *viewport* instead of the parent). One real bug along the way: a missing closing `]` silently dropped the whole margin utility, leaving the breakout only half-applied.
+- Email and phone number sizing moved from a fixed `text-7xl` to `clamp()`, calibrated against Miguel's own two real screens (MacBook 13" and an external monitor) rather than guessed numbers — same lesson as the Header: changing only a `clamp()`'s ceiling does nothing if the current viewport never reaches it; the *slope* (the middle term) is what actually governs the value at any real screen width.
+
+### 6. Model detail page: static coverflow gallery
+
+First dynamic route in the project, built mobile-first, then adapted to desktop.
+
+- `TALENT_DETAIL_QUERY` + `getTalentBySlug(slug)` — `$slug` is injected as a query parameter (same principle as a SQL prepared statement), never string-concatenated.
+- Layout: name + `InstagramIcon` (new component, same `currentColor` pattern as `Logo.tsx`), main photo (`gallery[0]`), a dynamic Height/Chest/Waist/Hips/Shoes grid that adds a 6th Suit-or-Dress column only when one of those fields is present (`talent.dress ?? talent.suit`, since a given talent only ever has one).
+- **Gallery fan, the actual design**: rather than track "which position is the active photo" (real complexity, deferred to Phase 5 since it only matters once there's real interactive state), `gallery[0]` is always the center, and `gallery[1..5]` / `gallery[6..10]` fan out symmetrically left and right.
+- 3D look: `perspective()` + `rotateY()` per thumbnail, **inline `style`, not a Tailwind class** — per-item computed values (a different angle for each thumbnail) can't be arbitrary Tailwind classes, since Tailwind only generates CSS for strings it can see literally in the source at build time, not ones assembled at runtime.
+- Explicit `zIndex` per thumbnail — without it, plain DOM paint order put the *farthest* photo on top (last rendered wins), backwards from the intended "next photo up" feel.
+- Progressively smaller + dimmer with distance, using `filter: brightness()` rather than `opacity` — opacity blends the photo toward the black background (reads as fading to black); `brightness()` dims the image itself while staying fully opaque.
+- `flex`'s default `justify-start` packs content against a box's own edge — on the left-side fan group, that meant the thumbnail *closest* to the counter floated wherever the group's natural content width happened to end, completely ignoring how wide the box itself was declared. `justify-end` fixed it: content now always hugs the edge nearest the counter, independent of the surrounding box's size.
+- A recurring Next.js dev warning ("width or height modified, but not the other") turned out to be a documented false positive (`vercel/next.js#47278`) once the actual aspect ratios were checked and confirmed consistent — not every console warning is a real bug.
+- Desktop reuses the exact same data (`leftPhotos`/`rightPhotos`) and math as mobile, just with fluid (`clamp()`-based) thumbnail sizing and spacing instead of mobile's fixed pixel values, tied to the same 1024→1800 reference points used everywhere else on the site.
+
+### 7. Commits this session
+
+Four commits, grouped by concern:
+- `feat(header): rebuild nav as a fluid 12-column grid`
+- `fix(footer): hide on unknown routes and fix fluid typography`
+- `refactor(sanity): merge mainPhoto into gallery, gallery[0] is now the cover`
+- `feat(model-page): add static model detail page with coverflow-style gallery`
+
+### Pending — Next Session
+
+- [ ] Finish tuning the desktop gallery/main-photo sizing on Miguel's actual external monitor (Dell S2722QC) — ceiling raised once already, may need another pass once real pixel measurements are available.
+- [ ] Desktop top padding (`pt-*`) still needs a properly measured `clamp()` — currently tuned by feel, not from a real window-width reading.
+- [ ] Tablet breakpoint for the model page gallery not explicitly verified — only mobile and desktop (`md:`) have been tested directly.
+- [ ] `public/instagram-logo-facebook-2-svgrepo-com.svg` is now unused (replaced by the inline `InstagramIcon.tsx` component) — safe to delete, left untouched this session.
+- [ ] `src/app/contact/page.tsx` still a pre-existing empty stub from an earlier session, untouched and uncommitted.
+- [ ] Write the actual content for `/legal/privacy`, `/legal/terms`, `/legal/impressum` — still outstanding.
+- [ ] Verify Logo.tsx's actual size discrepancy — still carried forward, unresolved since Session 05.
+- [ ] About/Contact — still blocked on Miguel's redesign.
+- [ ] Phase 5 (GSAP) backlog, now includes: the full interactive coverflow (drag/scroll/snap, reusing today's rotation/z-index/opacity groundwork), position-aware asymmetric fan opening, and the shared-element page transition from the Home grid's photo into the model page (depends on today's `gallery[0]` decision).
+- [ ] Transfer Sanity project ownership to a proper Organization under Boris.
+- [ ] Prettier (low-priority chore).
