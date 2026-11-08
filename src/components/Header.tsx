@@ -39,9 +39,10 @@ export default function Header() {
 	const logoColor = isHome ? "text-vvook-black" : "text-vvook-yellow";
 	const isModelPage = !["/", "/about", "/contact"].includes(pathname) && !pathname.startsWith("/legal/");
 	const link = `font-menu ${fluidText} ${textColor} whitespace-nowrap`;
+	// {`${isModelPage ? "lg:fixed" : "fixed"}
 
 	return (
-		<header className={`${isModelPage ? "lg:fixed" : "fixed"} top-0 inset-x-0 z-10`}>
+		<header className={`${isModelPage ? "" : "fixed"} top-0 inset-x-0 z-10`}>
 			{/* Mobile */}
 			<div className="md:hidden">
 				<div className="grid grid-cols-3 items-center px-4 py-4">
@@ -81,7 +82,7 @@ export default function Header() {
 
 
 				<div className="col-span-4 flex justify-center">
-					<Link href="/" className="block w-[52%]" aria-label="Vvook Management home">
+					<Link href="/" className="block w-[45%]" aria-label="Vvook Management home">
 						<Logo color={logoColor} />
 					</Link>
 				</div>
