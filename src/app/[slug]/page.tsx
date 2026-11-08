@@ -151,6 +151,7 @@ export default async function Page({ params }: {params: Params}) {
 							src={urlFor(talent.gallery[0]).width(900).height(1222).url()}
 							alt={talent.name ?? "Talent"}
 							fill
+							sizes="500px"
 							className="object-contain"
 							priority
 						/>
