@@ -33,23 +33,15 @@ export default defineType({
 		}),
 
 		defineField({
-			name: 'mainPhoto',
-			title: 'Main Photo',
-			type: 'image',
-			description: 'The photo shown in the models grid (it zooms in slightly when someone hovers over it).',
-			options: { hotspot: true },
-			validation: (Rule) => Rule.required()
-		}),
-
-		defineField({
 			name: 'gallery',
 			type: 'array',
-			description: "The photos on this model's own page. Drag to reorder — the first one is shown first.",
+			description: "Drag to reorder — the FIRST photo will be the grid photo.",
 			of: [{
 					type: 'image',
 					options: { hotspot: true, metadata: ['lqip'] },
 				}],
-			options: { layout: 'grid' }
+			options: { layout: 'grid' },
+			validation: (Rule) => Rule.required().min(1)
 		}),
 
 		defineField({
@@ -109,6 +101,6 @@ export default defineType({
 		}),
 	],
 	preview: {
-		select: { title: 'name', media: 'mainPhoto' },
+		select: { title: 'name', media: 'gallery.0' },
 	},
 });

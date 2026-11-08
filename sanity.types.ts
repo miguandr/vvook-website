@@ -49,13 +49,7 @@ export type Talent = {
   _updatedAt: string;
   _rev: string;
   name?: string;
-  mainPhoto?: {
-    asset?: SanityImageAssetReference;
-    media?: unknown;
-    hotspot?: SanityImageHotspot;
-    crop?: SanityImageCrop;
-    _type: "image";
-  };
+  slug?: Slug;
   gallery?: Array<{
     asset?: SanityImageAssetReference;
     media?: unknown;
@@ -88,6 +82,12 @@ export type SanityImageHotspot = {
   y?: number;
   height?: number;
   width?: number;
+};
+
+export type Slug = {
+  _type: "slug";
+  current?: string;
+  source?: string;
 };
 
 export type SanityImagePaletteSwatch = {
@@ -187,12 +187,6 @@ export type Geopoint = {
   alt?: number;
 };
 
-export type Slug = {
-  _type: "slug";
-  current?: string;
-  source?: string;
-};
-
 export type AllSanitySchemaTypes =
   | TalentReference
   | HomepageSettings
@@ -200,6 +194,7 @@ export type AllSanitySchemaTypes =
   | Talent
   | SanityImageCrop
   | SanityImageHotspot
+  | Slug
   | SanityImagePaletteSwatch
   | SanityImagePalette
   | SanityImageDimensions
@@ -207,46 +202,74 @@ export type AllSanitySchemaTypes =
   | SanityFileAsset
   | SanityAssetSourceData
   | SanityImageAsset
-  | Geopoint
-  | Slug;
+  | Geopoint;
 
 // Source: ../src/sanity/lib/queries.ts
 // Variable: TALENT_GRID_QUERY
-// Query: *[_type == "talent"]{ _id, name, mainPhoto }
+// Query: *[_type == "talent"]{		_id,		name,		slug,		"mainPhoto": gallery[0]	}
 export type TALENT_GRID_QUERY_RESULT = Array<{
   _id: string;
   name: string | null;
+  slug: Slug | null;
   mainPhoto: {
     asset?: SanityImageAssetReference;
     media?: unknown;
     hotspot?: SanityImageHotspot;
     crop?: SanityImageCrop;
     _type: "image";
+    _key: string;
   } | null;
 }>;
 
 // Source: ../src/sanity/lib/queries.ts
 // Variable: HOMEPAGE_SETTINGS_QUERY
-// Query: *[_type == "homepageSettings"][0]{		orderedTalents[]->{_id, name, mainPhoto }	}
+// Query: *[_type == "homepageSettings"][0]{		orderedTalents[]->{			_id,			name,			slug,			"mainPhoto": gallery[0]		}	}
 export type HOMEPAGE_SETTINGS_QUERY_RESULT = {
   orderedTalents: Array<{
     _id: string;
     name: string | null;
+    slug: Slug | null;
     mainPhoto: {
       asset?: SanityImageAssetReference;
       media?: unknown;
       hotspot?: SanityImageHotspot;
       crop?: SanityImageCrop;
       _type: "image";
+      _key: string;
     } | null;
   }> | null;
+} | null;
+
+// Source: ../src/sanity/lib/queries.ts
+// Variable: TALENT_DETAIL_QUERY
+// Query: *[_type == "talent" && slug.current == $slug][0]{		name,		slug,		gallery,		height,		chest,		waist,		hips,		shoes,		suit,		dress,		instagram	}
+export type TALENT_DETAIL_QUERY_RESULT = {
+  name: string | null;
+  slug: Slug | null;
+  gallery: Array<{
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+    _key: string;
+  }> | null;
+  height: number | null;
+  chest: number | null;
+  waist: number | null;
+  hips: number | null;
+  shoes: number | null;
+  suit: number | null;
+  dress: number | null;
+  instagram: string | null;
 } | null;
 
 // Query TypeMap
 declare global {
   interface SanityQueries {
-    '*[_type == "talent"]{ _id, name, mainPhoto }': TALENT_GRID_QUERY_RESULT;
-    '\n\t*[_type == "homepageSettings"][0]{\n\t\torderedTalents[]->{_id, name, mainPhoto }\n\t}\n': HOMEPAGE_SETTINGS_QUERY_RESULT;
+    '\n\t*[_type == "talent"]{\n\t\t_id,\n\t\tname,\n\t\tslug,\n\t\t"mainPhoto": gallery[0]\n\t}\n': TALENT_GRID_QUERY_RESULT;
+    '\n\t*[_type == "homepageSettings"][0]{\n\t\torderedTalents[]->{\n\t\t\t_id,\n\t\t\tname,\n\t\t\tslug,\n\t\t\t"mainPhoto": gallery[0]\n\t\t}\n\t}\n': HOMEPAGE_SETTINGS_QUERY_RESULT;
+    '\n\t*[_type == "talent" && slug.current == $slug][0]{\n\t\tname,\n\t\tslug,\n\t\tgallery,\n\t\theight,\n\t\tchest,\n\t\twaist,\n\t\thips,\n\t\tshoes,\n\t\tsuit,\n\t\tdress,\n\t\tinstagram\n\t}\n': TALENT_DETAIL_QUERY_RESULT;
   }
 }
 // Lets @sanity/client releases that predate the global registry read it too

@@ -2,6 +2,7 @@ import { getHomepageTalents } from "@/sanity/lib/getHomepageTalents";
 import { urlFor } from "@/sanity/lib/image";
 import Image from "next/image";
 import type { Viewport } from "next";
+import Link from "next/link";
 
 export const viewport: Viewport = {
 	themeColor: "#faff00",
@@ -53,19 +54,21 @@ export default async function Home() {
 	const [d1, d2, d3, d4] = distribute(talents, 4);
 
 	const Photo = ({ talent, priority }: { talent: (typeof talents)[number]; priority?: boolean }) => (
-		<div className="group relative mb-4 overflow-hidden">
-			<Image
-				src={urlFor(talent.mainPhoto).width(800).height(1060).url()}
-				alt={talent.name ?? "Talent"}
-				width={400}
-				height={530}
-				priority={priority}
-				className="lg:mb-1 h-auto w-full transition-transform duration-300 group-hover:scale-110 group-hover:animate-focus-pull"
-			/>
-			<span className="font-menu font-semibold absolute top-2 right-2 uppercase text-vvook-black opacity-100 transition-opacity duration-300 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-hover:animate-focus-pull">
-				{talent.name}
-			</span>
-		</div>
+		<Link href={`/${talent.slug?.current ?? "#"}`}>
+			<div className="group relative mb-4 overflow-hidden">
+				<Image
+					src={urlFor(talent.mainPhoto).width(800).height(1060).url()}
+					alt={talent.name ?? "Talent"}
+					width={400}
+					height={530}
+					priority={priority}
+					className="lg:mb-1 h-auto w-full transition-transform duration-300 group-hover:scale-110 group-hover:animate-focus-pull"
+				/>
+				<span className="font-menu font-semibold absolute top-2 right-2 uppercase text-vvook-black opacity-100 transition-opacity duration-300 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-hover:animate-focus-pull">
+					{talent.name}
+				</span>
+			</div>
+		</Link>
 	);
 
 	const threeColumnClass =
@@ -90,7 +93,7 @@ export default async function Home() {
 
 		{/* 4 columns: Desktop, only when enough roster */}
 		{desktopColumns === 4 && (
-			<div className="hidden lg:grid grid-cols-4 gap-5 px-16">
+			<div className="mx-auto max-w-[1800px] hidden lg:grid grid-cols-4 gap-5 px-16">
 				<div>{d1.map((t, i) => <Photo key={t._id} talent={t} priority={i === 0} />)}</div>
 				<div className="mt-24">{d2.map((t, i) => <Photo key={t._id} talent={t} priority={i === 0} />)}</div>
 				<div className="-mt-14">{d3.map((t, i) => <Photo key={t._id} talent={t} priority={i === 0} />)}</div>
