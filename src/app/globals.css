@@ -12,7 +12,6 @@
 @utility font-menu {
 	font-family: var(--font-inconsolata), monospace;
 	font-size: 10px;
-
 	@media (width >= 48rem) {
 		font-size: 14px;
 	}
