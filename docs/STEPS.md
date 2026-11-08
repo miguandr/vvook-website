@@ -737,3 +737,83 @@ Four commits, grouped by concern:
 - [ ] Phase 5 (GSAP) backlog, now includes: the full interactive coverflow (drag/scroll/snap, reusing today's rotation/z-index/opacity groundwork), position-aware asymmetric fan opening, and the shared-element page transition from the Home grid's photo into the model page (depends on today's `gallery[0]` decision).
 - [ ] Transfer Sanity project ownership to a proper Organization under Boris.
 - [ ] Prettier (low-priority chore).
+
+---
+
+## Session 09 — 2026-11-08
+
+### Goal
+
+Finish the model detail page's desktop behavior — not new features, almost entirely responsive refinement. The session surfaced a design constraint that reshaped everything: scroll on this page is reserved for paging through photos (Phase 5), so the page itself must **never** scroll — name, photo, gallery, and measurements have to fit inside one viewport at any window size, not just look reasonably centered with some slack.
+
+---
+
+### 1. Sizing by one axis isn't enough — `object-fit: contain` solves both at once
+
+Early in the session the main photo was sized by width only (`clamp()` of `vw`, height following via `h-auto`), then flipped to height-only (`vh`-based) when the "must always fit the viewport" requirement came up. Both were wrong in isolation — Miguel's own words: *"tanto el alto como el ancho son importantes. Tenemos que armar pensando en alto y ancho."* A photo on a short-but-wide window needs width to be the limit; the same photo on a tall-but-narrow window needs height to be the limit — and which one "wins" has to be decided automatically, not picked in advance.
+
+The fix: give the photo's container **two independent constraints at once** (a `clamp()` height tied to `vh`, and either an `aspect-ratio` or a width `clamp()` tied to `vw`), switch `next/image` to `fill` mode, and let `object-fit: contain` scale the actual image to fit inside whichever constraint is tighter at that exact moment — never distorting, never overflowing either edge. This is the standard tool for "fit inside a box that itself has two independent limits," and it's a different problem than the `w-full h-auto` pattern used everywhere else on the site (which only ever had one real constraint).
+
+One follow-up bug from this: the container's `aspect-[448/610]` didn't exactly match the *actual* fetched image (`900×1222`, from the "request 2x" sizing convention) — 448:610 and 900:1222 are not quite the same ratio (a few pixels off from rounding), which left a sliver of empty "letterboxed" space inside the box. Corner-positioned elements (the counter, the Instagram icon) sitting at `left-2`/`right-2` landed in that empty margin instead of on the real photo edge. Fixed by making the box's aspect ratio match the *exact* numbers being requested from Sanity, not the display-size numbers.
+
+### 2. The `calc(100vh - X)` pattern: height that reserves room for everything else
+
+To guarantee the page never needs scrolling, the photo's height isn't a plain `vh` percentage — it's `calc(100vh - X)`, where `X` is a fixed pixel budget for everything *else* on the page (name, measurements, margins). This makes the photo's height self-balancing: whatever's left over after the fixed stuff is exactly what the photo gets, so the total can never exceed one viewport.
+
+Two real bugs came from `X` being wrong, not from the technique itself:
+- `X` was calculated assuming the header was `fixed` (floating, consuming no space) — once the header was changed to never be fixed on this page (see §4), the header started taking real space in normal flow, and `X` had to grow to account for it, or the formula under-budgets and scroll creeps back in.
+- A `clamp()` *ceiling* on the same height (`650px`, later `670px`) was being hit before the `calc()` term ever got a chance to run — meaning on a sufficiently tall screen, the photo was stuck at a fixed size while the `calc()` math (which is what actually prevents scroll) never engaged at all. The ceiling needs to be high enough that it only acts as a true safety cap, not as the normal operating value.
+
+### 2b. Vertical centering has a cost once content is capped
+
+`min-h-screen` + `flex flex-col justify-center` (added to solve "content crammed at the top on a short window," a request from two sessions ago) turned out to fight with the request above on a genuinely tall external monitor: once the photo hit its *intentional* maximum size, `justify-center` kept distributing the leftover space evenly above and below anyway — which, on a very tall screen, is a lot of leftover space, and reads as "too much gap" rather than "nicely centered." Removed the centering wrapper entirely in favor of a small fixed `pt-*` — the `calc(100vh - X)` formula is what actually guarantees no scroll; centering was only ever cosmetic on top of it, and past a certain screen height it stopped looking cosmetic and started looking broken.
+
+### 3. Two flexbox defaults that quietly break centering
+
+- **`min-width: auto` on flex items**: by default, a `flex-1` container refuses to shrink smaller than its content's natural width, even though `flex-1` sounds like "shrink to fit." The fan thumbnails are explicitly-sized (not intrinsically sized), so their container's "natural width" was the sum of all of them — once the window got narrow enough that this sum didn't fit, the container overflowed its own box instead of shrinking, silently dragging the whole row (and anything centered independently of it, like the name) sideways. Fixed with `min-w-0` (tells the browser shrinking below content size is allowed) plus `overflow-hidden` (clips whatever still doesn't fit, instead of spilling).
+- **Conditionally-rendered flex siblings break their own centering mechanism**: the left/right fan containers were wrapped in `{photos.length > 0 && (...)}`, so a talent with too few extra photos to fill *either* side (one photo total, in Iñigo's case) rendered with **zero** fan containers in the DOM. With nothing on either side pushing back, the main photo — which has no `flex-grow` of its own — just sat at the row's default `flex-start`, flush left. The fix: always render both `flex-1` containers (so they always contribute equal pull on both sides), and move the `.length > 0` check inside, around only the `.map()` that fills them.
+
+### 4. Header: never fixed on the model page
+
+Since this page is now designed to always fit one viewport with no scroll, a `position: fixed` header no longer needs to float independently above the content — `isModelPage` now skips `fixed` entirely (previously it was `lg:fixed`, fixed only from desktop up). Direct consequence: the header now takes real space in normal document flow on this page, which is *why* the `calc(100vh - X)` budget in §2 had to grow.
+
+### 5. Splitting extra photos evenly, by the real count — not a fixed slice
+
+The fan gallery was built around two fixed slices (`gallery.slice(1,6)` right, `gallery.slice(6,11)` left) — correct for a talent with 11+ extra photos, but silently lopsided for anyone with fewer. A 9-photo gallery (8 extra) was coming out 5-right / 3-left, because the right slice always claimed its fixed 5 first, leaving whatever remained for the left. Fixed by computing the real extra-photo count first, then splitting it down the middle (capped at 5 per side for very large galleries): `Math.min(5, Math.ceil(extraPhotos.length / 2))`.
+
+### 6. Measuring real screens instead of guessing `clamp()` ranges
+
+All of today's `clamp()` formulas (and most of the last two sessions') are anchored to `1024px → 1800px` as the "small screen → big screen" reference range. Miguel measured his own two screens via `window.innerWidth` in the browser console (first attempt was skewed low because DevTools was docked and eating into the page's own viewport — undocking it into a separate window gave the real number) and confirmed: MacBook ≈ `1024px`, external Dell monitor ≈ `1800px` — the exact pair already in use everywhere. Separately confirmed `1024px` is a real industry-standard breakpoint (matches Tailwind's `lg:`), and that `~1500px` reference widths (close to Tailwind's `2xl: 1536px`) for "where a design reaches its full intended size, then stops growing" is a documented, common pattern — not something invented for this project.
+
+### 7. Sanity: measurements and Instagram are now required
+
+Boris can no longer publish a `talent` without `height`, `chest`, `waist`, `hips`, `shoes`, and an Instagram link — the model page's layout assumes they're always present (a missing measurement would leave an empty grid cell; this closes that gap at the content-entry level rather than defensively in code). `suit`/`dress` stay optional, since they're intentionally mutually exclusive and a blanket `Rule.required()` on both would contradict that design.
+
+One non-obvious result: re-running `schema extract` + `typegen generate` after this change produced a byte-identical `schema.json`/`sanity.types.ts` — `Rule.required()` is a Studio-side *publish-time* check, not a type-level guarantee (a document saved before the rule existed could still hold `null`), so TypeGen keeps these fields nullable regardless. Same lesson as the `hasPhoto` guard from Session 06/07, from the opposite direction.
+
+### 8. An orphaned field, explained
+
+Sanity Studio started warning `Unknown field found` on `mainPhoto` for existing documents — expected, not a bug: the field was removed from the schema in Session 08 (merged into `gallery[0]`), but Sanity doesn't delete data out of existing documents just because its schema definition disappeared. Harmless for the live site (the code reads `gallery[0]`, never `mainPhoto`), but flagged a real follow-up: for talents that existed *before* the merge, nothing automatically guaranteed `gallery[0]` is the same photo that used to be `mainPhoto` — worth spot-checking.
+
+### 9. Commits this session
+
+Four commits:
+- `fix(header): never pin the header fixed on the model detail page`
+- `feat(sanity): require measurements and instagram on talent`
+- `fix(model-page): make the desktop gallery truly fluid, in both axes`
+
+(The schema regenerate step was re-run but produced no file changes — see §7.)
+
+### Pending — Next Session
+
+- [ ] Spot-check that `gallery[0]` matches the old `mainPhoto` for talents that existed before the Session 08 schema merge (Debora, Max G., etc.) — nothing migrated this automatically.
+- [ ] Clean up the orphaned `mainPhoto` field from existing Sanity documents (Studio's own "remove field" action, or ignore — it's cosmetic).
+- [ ] `public/instagram-logo-facebook-2-svgrepo-com.svg` still unused, still safe to delete.
+- [ ] `src/app/contact/page.tsx` still an untouched pre-existing stub.
+- [ ] Legal page content, Logo.tsx size discrepancy, About/Contact redesign — all still carried forward.
+- [ ] Back-arrow in front of "MODELS" in the header when on a model page — explicitly deferred until the active-model indicator dot is added to the Home grid.
+- [ ] Phase 5 (GSAP) backlog unchanged from Session 08, plus: today's scroll-reserved-for-gallery-navigation constraint is now a confirmed design requirement, not just an idea.
+- [ ] Transfer Sanity project ownership to a proper Organization under Boris.
+- [ ] Prettier (low-priority chore).
+
+**Starting point for next session**: the About page.
