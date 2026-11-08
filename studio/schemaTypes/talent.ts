@@ -49,6 +49,7 @@ export default defineType({
 			title: 'Height',
 			type: 'number',
 			description: 'In centimetres.',
+			validation: (Rule) => Rule.required()
 		}),
 
 		defineField({
@@ -56,6 +57,7 @@ export default defineType({
 			title: 'Chest',
 			type: 'number',
 			description: 'In centimetres.',
+			validation: (Rule) => Rule.required()
 		}),
 
 		defineField({
@@ -63,6 +65,7 @@ export default defineType({
 			title: 'Waist',
 			type: 'number',
 			description: 'In centimetres.',
+			validation: (Rule) => Rule.required()
 		}),
 
 		defineField({
@@ -70,6 +73,7 @@ export default defineType({
 			title: 'Hips',
 			type: 'number',
 			description: 'In centimetres.',
+			validation: (Rule) => Rule.required()
 		}),
 
 		defineField({
@@ -77,6 +81,7 @@ export default defineType({
 			title: 'Shoes',
 			type: 'number',
 			description: 'EU size.',
+			validation: (Rule) => Rule.required()
 		}),
 
 		defineField({
@@ -97,7 +102,8 @@ export default defineType({
 			name: 'instagram',
 			title: 'Instagram',
 			type: 'url',
-			description: 'The full link, e.g. https://instagram.com/username'
+			description: 'The full link, e.g. https://instagram.com/username',
+			validation: (Rule) => Rule.required()
 		}),
 	],
 	preview: {
