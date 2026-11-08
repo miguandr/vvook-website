@@ -8,7 +8,10 @@ export default function Footer() {
 	const isHome = pathname === "/";
 	const textColor = isHome ? "text-vvook-black" : "text-vvook-white";
 	const bgColor = isHome ? "bg-vvook-yellow" : "bg-vvook-black";
+	const isKnownPage = pathname === "/" || pathname === "/about" || pathname === "/contact" || pathname.startsWith("/legal/");
 
+	if (!isKnownPage)
+		return;
 	return (
 		<footer>
 			{/* Mobile */}
@@ -28,17 +31,17 @@ export default function Footer() {
 			</div>
 
 			{/* Desktop */}
-			<div className="hidden lg:block bg-vvook-black">
-				<p aria-hidden="true" className="font-menu text-xs text-vvook-grey whitespace-pre overflow-hidden">
+			<div className="hidden lg:block bg-vvook-black max-w-[1800px] mx-auto">
+				<p aria-hidden="true" className="font-menu text-xs text-vvook-grey whitespace-pre overflow-hidden w-screen mx-[calc(50%-50vw)]">
 					{/* ticker text — purely decorative, repeats visually */}
-					· BERLIN · 2024 · 011     ——     VVOOK MANAGEMENT · BERLIN · 2024 · 012     ——     VVOOK MANAGEMENT · BERLIN · 2024 · 013     ——     VVOOK MANAGEMENT · BERLIN · 2024 · 014     ——     VVOOK MANAGEMENT · BERLIN · 2024 · 015     ——     VVOOK MANAGEMENT · BERLIN · 2024 · 016     ——     VVOOK MANAGEMENT · BERLIN · 2024 · 017     ——     VVOOK MANAGEMENT · BERLIN · 2024 · 018     ——     VVOOK MANAGEMENT · BERLIN · 2024 · 019     ——     VVOOK MANAGEMENT · BERLIN · 2024 · 020
+					· BERLIN · 2024 · 011          ——          VVOOK MANAGEMENT · BERLIN · 2024 · 012          ——          VVOOK MANAGEMENT · BERLIN · 2024 · 013          ——          VVOOK MANAGEMENT · BERLIN · 2024 · 014          ——          VVOOK MANAGEMENT · BERLIN · 2024 · 015          ——          VVOOK MANAGEMENT · BERLIN · 2024 · 016          ——          VVOOK MANAGEMENT · BERLIN · 2024 · 017          ——          VVOOK MANAGEMENT · BERLIN · 2024 · 018          ——          VVOOK MANAGEMENT · BERLIN · 2024 · 019          ——          VVOOK MANAGEMENT · BERLIN · 2024 · 020
 				</p>
 
-				<div className="text-center font-serif mt-40">
-					<a href="mailto:info@vvookmanagement.com" className="text-white text-7xl">
+				<div className="text-center font-serif mt-48">
+					<a href="mailto:info@vvookmanagement.com" className="text-white text-[clamp(65px,-7.58px+7.088vw,110px)]">
 						info@vvookmanagement.com
 					</a>
-					<p className="text-vvook-grey text-3xl mt-10 mb-28">
+					<p className="text-vvook-grey text-[clamp(25px,-7.99px+3.222vw,45px)] mt-5 mb-40">
 						+49 179 9921446
 					</p>
 				</div>
