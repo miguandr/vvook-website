@@ -1,35 +1,24 @@
+import Image from "next/image"
+
 export default function About() {
 	return (
-		<main className="px-13 pt-16">
-			<section>
-				<hgroup className="w-fit mx-auto">
-					<p className="font-display font-bold text-vvook-yellow text-base"> ABOUT</p>
-					<h1 className="font-logo text-[12rem] leading-none -ml-1.5">Our Vision</h1>
-				</hgroup>
-				<p>
-					<span aria-hidden="true" className="font-logo text-vvook-yellow">|00</span>
-					Vvook Management is a Berlin-based model agency with a focus on individuality, character and long-term development.
+		<main className="overflow-x-hidden -mt-10 lg:mt-[clamp(96px,-94.02px+18.557vw,260px)]">
+			<section className="">
+				<h1 className=" relative max-w-[1800px] mx-auto px-4 md:px-5 lg:px-16 font-serif leading-[80%] text-[clamp(90px,34.74px+14.737vw,300px)] mt-39.5 ">
+					MODEL<br/>AGENCY
+					<Image
+						src="/Moses3.jpg"
+						width={226}
+						height={302}
+						alt="..."
+						className="absolute w-[52vw] h-[70vw] top-[1.48em] left-[44vw] md:w-[35vw] md:h-[48vw] md:top-[14.75vw] md:left-[62vw] lg:w-[1.70em] lg:h-[2.2em] lg:top-[0.81em] lg:left-[3.69em]"
+
+					/>
+				</h1>
+				<p className="font-menu px-12 md:px-0 md:w-fit md:mx-auto text-[12px] lg:text-[14px] uppercase mt-[58.75px] mb-[58.75px] md:mt-[clamp(129.38px,-6.69px+13.288vw,232.49px)]">
+					we celebrate<br/>diversity and<br/>emphasize<br/>authenticity.
 				</p>
-				<p>
-					<span aria-hidden="true" className="font-logo text-vvook-yellow">|01</span>
-					We believe that strong careers are not built overnight. Rather than chasing quick success, we take the time to understand each talent, develop their potential and create a clear and sustainable path within the industry.
-				</p>
-				<p>
-					<span aria-hidden="true" className="font-logo text-vvook-yellow">|02</span>
-					Our approach is personal, strategic and selective. We support our models from their first steps onwards, helping them grow with confidence while positioning them thoughtfully in the German and international market.
-				</p>
-			</section>
-			<section className="flex justify-between">
-				<div>
-					<p>
-						<span aria-hidden="true" className="font-logo text-vvook-yellow">|03</span>
-						For us, successful representation is about more than bookings. It is about building lasting careers, creating the right opportunities and maintaining a close and honest relationship with the people we represent.
-					</p>
-					<h2>Founder</h2>
-					<p>Boris Kralj</p>
-					<p>Est. 2024</p>
-				</div>
-				{/* <Image src={...} alt="Boris Kralj" /> */}
+				<h2 className="max-w-[1800px] mx-auto px-4 mt-[clamp(100px,-137.49px+23.196vw,250px)] md:px-5 lg:px-14 font-serif leading-[80%] text-[clamp(90px,34.74px+14.737vw,300px)] text-right">BERLIN<br/>BASED</h2>
 			</section>
 		</main>
 	)
