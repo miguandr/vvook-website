@@ -18,7 +18,7 @@ export default function About() {
 				<p className="font-menu px-12 md:px-0 md:w-fit md:mx-auto text-[12px] lg:text-[14px] uppercase mt-[58.75px] mb-[58.75px] md:mt-[clamp(129.38px,-6.69px+13.288vw,232.49px)]">
 					we celebrate<br/>diversity and<br/>emphasize<br/>authenticity.
 				</p>
-				<h2 className="max-w-[1800px] mx-auto px-4 mt-[clamp(100px,-137.49px+23.196vw,250px)] md:px-5 lg:px-14 font-serif leading-[80%] text-[clamp(90px,34.74px+14.737vw,300px)] text-right">BERLIN<br/>BASED</h2>
+				<h2 className="max-w-[1800px] mx-auto px-4 mt-[clamp(100px,-32.99px+12.89vw,200px)] md:px-5 lg:px-14 font-serif leading-[80%] text-[clamp(90px,34.74px+14.737vw,300px)] text-right">BERLIN<br/>BASED</h2>
 			</section>
 		</main>
 	)
