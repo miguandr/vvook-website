@@ -817,3 +817,94 @@ Four commits:
 - [ ] Prettier (low-priority chore).
 
 **Starting point for next session**: the About page.
+
+---
+
+## Session 10 — 2026-11-09
+
+### Goal
+
+Build the About page's hero section from scratch, from two new Figma frames (desktop node `958-1210`, mobile node `913-655`) that fully supersede an old, already-abandoned draft. Mobile-first, no animations yet (GSAP is still deferred). This session is almost entirely about one hard problem — anchoring a photo to the exact edge of a letter in a giant, fluid headline, so it stays glued there at *any* screen size — and the handful of CSS fundamentals that problem forces you to actually understand, not just copy-paste.
+
+---
+
+### 1. `em` vs `vw` — the core distinction the whole session turned on
+
+Both are relative units, which is why it's easy to blur them together, but they answer two completely different questions:
+
+- **`em`** — "how big is THIS element's font right now?" `1em` always equals the current computed `font-size`. If that font-size is driven by a `clamp()`, everything sized in `em` scales *with the text*, automatically, at every pixel in between.
+- **`vw`** — "how wide is the browser WINDOW right now?" `1vw` = 1% of viewport width. It has no idea what font-size is in play anywhere on the page.
+
+They often move together (bigger window → usually bigger text too), which is exactly what makes the difference easy to miss — until the two diverge, which they did, repeatedly, this session.
+
+**Rule of thumb that came out of this**: use `em` when something needs to track *text* (follow a specific letter, scale exactly with a headline). Use `vw` when something needs to track the *screen* independently of any particular element's font-size — which turned out to be true of the mobile hero photo specifically, because Figma's mobile composition isn't a scaled-down version of the desktop one; it's a genuinely different layout (photo sized as ~56% of screen width, not anchored to any letter).
+
+### 2. Absolute positioning anchors to the nearest *positioned* ancestor — not to "wherever it visually looks closest to"
+
+The hero photo needed its top-left corner to touch the bottom-right tip of the "L" in "MODEL," at every screen size. First attempt: `position: absolute` on the `<Image>` as a *sibling* of the `<h1>`, both inside a `<section className="relative">`. Math was done correctly (`top`/`left` in `em`), but it drifted anyway as the window resized.
+
+Root cause: an absolutely positioned element's `top`/`left` are relative to the **padding edge of its nearest positioned ancestor** — full stop, regardless of which element it "looks like" it should track. The image's nearest positioned ancestor was `<section>`, not `<h1>`. The path from `<section>` to the actual letter went through things that don't scale proportionally with font-size — `<h1>`'s own `margin-top` (a fixed px value) and its padding (`px-4 md:px-5 lg:px-16`, a stepped value) — so the `em`-based offset and the real position of the letter were two different straight lines that only coincidentally matched at the one screen size it was eyeballed against.
+
+**Fix**: move the `<Image>` to be an actual *child* of `<h1>`, and put `position: relative` on `<h1>` itself. Now the image's `em` offsets are measured from `<h1>`'s own box — `<h1>`'s external margin and the section's padding are completely outside that box and stop contaminating the math. Once nested correctly, the anchor held *exactly*, verified with real numbers (see §4) — not just "looks fine."
+
+### 3. Normal document flow vs. absolute positioning: one pushes siblings, the other doesn't
+
+A second, related trap, later in the session: the small "we celebrate..." paragraph sits in normal flow between the `<h1>` and `<h2>` ("BERLIN BASED"). Giving the paragraph more `margin-top` to center it vertically also pushed "BERLIN BASED" further down the page — which looked like a completely unrelated bug at first.
+
+It isn't one: `<p>` and `<h2>` are plain flow siblings. Moving `<p>` down moves its own bottom edge down by the same amount, and `<h2>`, which starts measuring from wherever `<p>` ends, inherits that shift. The *photo*, by contrast, never had this problem, specifically *because* it's `position: absolute` — removed from flow, so nothing about its size or position pushes anything else around, and nothing before it in flow pushes it around either (its position is purely a function of its positioned ancestor, computed in §2). This is the real, practical difference between "flow" and "absolute" layout, learned by hitting the consequence of each.
+
+**Fix used tonight**: a compensating subtraction — reduce `<h2>`'s own `margin-top` by the same amount `<p>`'s was increased, so the cascade cancels out and `<h2>` lands back where it already was. Flagged explicitly as a patch, not the clean fix — the principled version (decouple `<p>` from flow entirely, e.g. `position: absolute` like the photo) is next-session work.
+
+### 4. Verify with real numbers, not screenshots — screenshots lie about precision
+
+Comparing two screenshots at different window widths, by eye, produced a long back-and-forth of "it's drifting" / "it's not drifting" that genuinely wasted most of an hour — screenshots at different physical resolutions and zoom levels aren't directly comparable pixel-for-pixel, and the eye is bad at judging "same proportion, different absolute size" versus "actually different proportion."
+
+What actually settled it, twice, was a short console snippet run directly in the browser:
+
+```js
+const h1 = document.querySelector('h1');
+const img = document.querySelector('h1 img');
+const h1Rect = h1.getBoundingClientRect();
+const imgRect = img.getBoundingClientRect();
+const fontSize = parseFloat(getComputedStyle(h1).fontSize);
+console.log({
+  fontSize,
+  leftEm: (imgRect.left - h1Rect.left) / fontSize,
+  topEm: (imgRect.top - h1Rect.top) / fontSize,
+});
+```
+
+Run at two very different window widths, the resulting `leftEm`/`topEm` matched to 4–5 significant figures once the image was correctly nested (§2) — conclusive, in a way no screenshot comparison could be. The same technique (measure real rendered positions, not the authored CSS values) was reused later to center the paragraph between the two headlines: compute `(h1.bottom + h2.top) / 2`, compare to the paragraph's actual current center, and the difference *is* exactly how much `margin-top` to add — no guessing.
+
+### 5. A recurring, specific `clamp()` mistake: changing the endpoints without recalculating the middle term
+
+Happened at least three times tonight, independently, on three different properties (image position, a margin-top, a second margin-top): adjusting a `clamp()`'s `MIN`/`MAX` bounds by hand, while leaving the linear `intercept + slope·vw` term untouched from a previous calculation. Since the linear term was derived specifically for the *old* bounds, it doesn't necessarily touch the *new* ones at the reference widths anymore — meaning the new floor or ceiling silently never activates in the range you actually care about, while the old (wrong) value keeps showing up instead.
+
+**The tell**: "it looks right at one end, wrong at the other, and I don't understand why" — exactly the symptom each time. **The fix is mechanical, not conceptual**: whenever either endpoint of a clamp changes, the slope and intercept *must* be recalculated from scratch with the new pair of (width, value) points — there's no shortcut, and this is precisely the repeatable calculation Miguel asked to learn to do solo, which is next session's first task.
+
+### 6. Mobile isn't a scaled-down desktop — it's a different composition, with its own unit system
+
+Early attempts tried to extend the desktop `em`-anchored "touch the letter" system all the way down to real phone widths (390–430px), reusing the same calibrated `em` values. It overflowed off the right edge of the screen — the anchor was *working correctly*, proportionally, but the desktop composition itself (headline width, photo size, how far right the touch-point sits) simply doesn't fit on a phone, because Figma's mobile frame isn't the desktop frame scaled down; it's its own layout with its own proportions (photo at ~56% of screen width, ~40% from the left edge, independent of the headline's font-size).
+
+**Resolution**: mobile and tablet use `vw`-based sizing (own calibrated percentages, matching Figma's actual mobile numbers), and only `lg:` (1024px+, where padding also finally becomes a long constant 64px run instead of a stepped value) switches over to the `em`-anchored system. Mixing the two systems at the *wrong* breakpoint (originally tried at `md:`, 768px) produced a visible size "jump" exactly at that breakpoint, because `vw` and `em` don't naturally agree at any arbitrary boundary — moving the handoff to `lg:` didn't remove the jump, it just moved the one unavoidable seam to the boundary that already has to exist for other reasons (padding, see below).
+
+### 7. Breakpoint-stepped padding reintroduces the exact bug the font-size clamp just fixed
+
+The headline's font-size was converted to one continuous `clamp(90px, ..., 300px)` spanning 375px → 1800px, eliminating an earlier jump at `md:`. But `<h1>`'s horizontal padding (`px-4 md:px-5 lg:px-16`) is still a *stepped* value — and since the photo's `left` offset is measured from `<h1>`'s padding edge (§2), any padding jump shows up directly as a sideways misalignment between the photo and the text, even though the font-size itself is now perfectly smooth. The photo's `em` calibration was done entirely within the `lg:` tier (1024–1800px), where padding happens to be constant at 64px for the whole range — which is *why* it worked there and nowhere else. Needed its own separately-calibrated `left`/`top`/`width`/`height` values per padding tier (mobile, `md:`, `lg:`), not one formula stretched across all three.
+
+### 8. Commits this session
+
+Three commits:
+- `feat(about): build fluid hero section with text-anchored photo overlay`
+- `chore(header): remove stray comments`
+- `fix(about): tighten BERLIN BASED margin-top ceiling to 200px`
+
+### Pending — Next Session
+
+- [ ] **Priority**: teach Miguel the full `clamp()` derivation + live-measurement workflow as a repeatable *process* he can run solo (not something he has to screenshot-and-ask for every time) — explicit ask from tonight, this is the first thing to do next session, before any new feature work.
+- [ ] Paragraph ("we celebrate...") still isn't quite vertically centered between the two headlines on the largest screens — needs a fresh `getBoundingClientRect()` measurement pass (§4) now that the headline, photo, and `h2` margins have all settled.
+- [ ] The `<p>` → `<h2>` margin cascade (§3) was patched with a compensating subtraction, not fixed at the root — consider making `<p>` `position: absolute` (like the photo) so it stops pushing `<h2>` around entirely.
+- [ ] Rest of the About page: photo + "MODEL AGENCY"/"BERLIN BASED" hero is the only section built. Still needed: two quote blocks (group photo + "successful representation..." / "personal, strategic and selective..."), the Boris Kralj photo + quote + founder credit, and reusing the existing global `<Footer />` (already confirmed to need no changes for `/about`).
+- [ ] All Session 09 pending items carried forward unchanged (mainPhoto spot-check, orphaned field cleanup, unused SVG, contact page stub, legal pages, Logo.tsx size discrepancy, back-arrow nav idea, Phase 5 GSAP backlog, Sanity org transfer, Prettier).
+
+**Starting point for next session**: the clamp/measurement teaching session Miguel asked for, *then* the rest of the About page.
