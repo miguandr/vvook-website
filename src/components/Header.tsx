@@ -4,10 +4,6 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Logo from "./Logo";
 
-/* 10px at a 375px-wide screen → 14px at 1440px, fixed outside that range.
-   Formula (to change the numbers): slope = (maxPx - minPx) / (maxW - minW)
-   → vw = slope * 100;  intercept = minPx - minW * slope
-   (4 / 1065 = 0.003756 → 0.376vw;  10 - 375 * 0.003756 = 8.59px)            */
 const fluidText = "md:text-[clamp(10px,8.59px_+_0.376vw,14px)]";
 
 function NavLink({
@@ -39,7 +35,6 @@ export default function Header() {
 	const logoColor = isHome ? "text-vvook-black" : "text-vvook-yellow";
 	const isModelPage = !["/", "/about", "/contact"].includes(pathname) && !pathname.startsWith("/legal/");
 	const link = `font-menu ${fluidText} ${textColor} whitespace-nowrap`;
-	// {`${isModelPage ? "lg:fixed" : "fixed"}
 
 	return (
 		<header className={`${isModelPage ? "" : "fixed"} top-0 inset-x-0 z-10`}>
