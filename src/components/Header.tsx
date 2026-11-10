@@ -4,8 +4,6 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Logo from "./Logo";
 
-const fluidText = "md:text-[clamp(10px,8.59px_+_0.376vw,14px)]";
-
 function NavLink({
 	href,
 	children,
@@ -34,13 +32,13 @@ export default function Header() {
 	const textColor = isHome ? "text-vvook-black" : "text-vvook-white";
 	const logoColor = isHome ? "text-vvook-black" : "text-vvook-yellow";
 	const isModelPage = !["/", "/about", "/contact"].includes(pathname) && !pathname.startsWith("/legal/");
-	const link = `font-menu ${fluidText} ${textColor} whitespace-nowrap`;
+	const link = `font-menu ${textColor} whitespace-nowrap`;
 
 	return (
-		<header className={`${isModelPage ? "" : "fixed"} top-0 inset-x-0 z-10`}>
+		<header className={`${isModelPage ? "" : "fixed"} px-gutter top-0 inset-x-0 z-10`}>
 			{/* Mobile */}
 			<div className="md:hidden">
-				<div className="grid grid-cols-3 items-center px-4 py-4">
+				<div className="grid grid-cols-3 items-center py-4">
 					<div className="flex gap-8 font-menu">
 						<NavLink href="/" className={`font-menu ${textColor}`}>MODELS</NavLink>
 						<a
@@ -53,7 +51,7 @@ export default function Header() {
 						</a>
 					</div>
 
-					<div className="w-28 justify-self-center">
+					<div className="w-[27.61vw] justify-self-center">
 						<Link href="/"><Logo color={logoColor} /></Link>
 					</div>
 
@@ -65,7 +63,7 @@ export default function Header() {
 			</div>
 
 			{/* Tablet + Desktop */}
-			<nav className={`max-w-[1800px] mx-auto hidden md:grid grid-cols-12 items-center py-4 md:px-5 lg:px-16`}>
+			<nav className={`hidden md:grid grid-cols-12 items-center py-4`}>
 				<div className="col-span-2 text-left">
 					<NavLink href="/" className={link}>MODELS</NavLink>
 				</div>
@@ -77,7 +75,7 @@ export default function Header() {
 
 
 				<div className="col-span-4 flex justify-center">
-					<Link href="/" className="block w-[45%]" aria-label="Vvook Management home">
+					<Link href="/" className="block md:w-[14.55vw]" aria-label="Vvook Management home">
 						<Logo color={logoColor} />
 					</Link>
 				</div>

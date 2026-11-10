@@ -73,8 +73,8 @@ export default async function Home() {
 
 	const threeColumnClass =
 		desktopColumns === 4
-			? "hidden md:grid lg:hidden grid-cols-3 gap-4 px-4"
-			: "hidden md:grid grid-cols-3 gap-5 px-5";
+			? "hidden md:grid lg:hidden grid-cols-3 gap-4 px-gutter"
+			: "hidden md:grid grid-cols-3 gap-5 px-gutter";
 
   return (
       <main className="bg-vvook-yellow text-vvook-black min-h-screen pt-24 md:pt-43 lg:pt-62">
@@ -93,7 +93,7 @@ export default async function Home() {
 
 		{/* 4 columns: Desktop, only when enough roster */}
 		{desktopColumns === 4 && (
-			<div className="mx-auto max-w-[1800px] hidden lg:grid grid-cols-4 gap-5 px-16">
+			<div className="mx-auto hidden lg:grid grid-cols-4 gap-5 px-gutter">
 				<div>{d1.map((t, i) => <Photo key={t._id} talent={t} priority={i === 0} />)}</div>
 				<div className="mt-24">{d2.map((t, i) => <Photo key={t._id} talent={t} priority={i === 0} />)}</div>
 				<div className="-mt-14">{d3.map((t, i) => <Photo key={t._id} talent={t} priority={i === 0} />)}</div>

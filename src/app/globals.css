@@ -7,14 +7,30 @@
 	--color-vvook-grey: #8C8C8C;
 	--font-display: var(--font-inconsolata), monospace;
 	--font-serif: var(--font-playfair), serif;
+
+	--font-size-step--2: max(0.5208rem, 0.5066rem + 0.0565vw);
+	--font-size-step--1: max(0.625rem, 0.5978rem + 0.1081vw);
+	--font-size-step-0:  max(0.75rem, 0.7047rem + 0.1802vw);
+	--font-size-step-1:  max(0.9rem, 0.8298rem + 0.2793vw);
+	--font-size-step-2:  max(1.08rem, 0.976rem + 0.414vw);
+	--font-size-step-3:  max(1.296rem, 1.1464rem + 0.5953vw);
+	--font-size-step-4:  max(1.5552rem, 1.3448rem + 0.8375vw);
+	--font-size-step-5:  max(1.8662rem, 1.575rem + 1.159vw);
+	--font-size-step-6:  max(2.2395rem, 1.8417rem + 1.5832vw);
+
+	--spacing-gutter: max(16px, -1.38px + 4.324vw);
+	/* --spacing-hero-gap: max(165px, 139.65px + 6.306vw); */
+	--spacing-hero-gap-mobile: 165px;
+	--spacing-hero-gap-tablet: 120px;
+	--spacing-hero-gap-desktop: 235px;
+
+
+
 }
 
 @utility font-menu {
 	font-family: var(--font-inconsolata), monospace;
-	font-size: 10px;
-	@media (width >= 48rem) {
-		font-size: 14px;
-	}
+	font-size: max(10px, 8.55px + 0.360vw);
 }
 
 @keyframes focus-pull {

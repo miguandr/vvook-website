@@ -1,24 +1,25 @@
 import Image from "next/image"
 
+//lg:w-[1.70em] lg:h-[2.2em] lg:top-[0.81em] lg:left-[3.69em]
+
 export default function About() {
 	return (
-		<main className="overflow-x-hidden -mt-10 lg:mt-[clamp(96px,-94.02px+18.557vw,260px)]">
-			<section className="">
-				<h1 className=" relative max-w-[1800px] mx-auto px-4 md:px-5 lg:px-16 font-serif leading-[80%] text-[clamp(90px,34.74px+14.737vw,300px)] mt-39.5 ">
+		<main className="overflow-x-hidden -mt-10 md:mt-0 lg:mt-[clamp(96px,-91.424px+18.304vw,260px)]">
+			<section className="relative">
+				<h1 className=" relative px-gutter font-serif leading-[80%] text-[22.89vw] md:text-[16.4vw] mt-39.5 ">
 					MODEL<br/>AGENCY
 					<Image
-						src="/Moses3.jpg"
+						src="/Moses.jpg"
 						width={226}
 						height={302}
 						alt="..."
-						className="absolute w-[52vw] h-[70vw] top-[1.48em] left-[44vw] md:w-[35vw] md:h-[48vw] md:top-[14.75vw] md:left-[62vw] lg:w-[1.70em] lg:h-[2.2em] lg:top-[0.81em] lg:left-[3.69em]"
-
+						className="absolute w-[min(54.22vw,264px)] h-[min(74.12vw,360px)] top-[1.48em] right-gutter md:w-[29.76vw] md:h-[39.68vw] md:top-[13.30vw] md:left-[61.3vw]"
 					/>
 				</h1>
-				<p className="font-menu px-12 md:px-0 md:w-fit md:mx-auto text-[12px] lg:text-[14px] uppercase mt-[58.75px] mb-[58.75px] md:mt-[clamp(129.38px,-6.69px+13.288vw,232.49px)]">
+				<p className="font-menu uppercase text-vvook-grey ml-[calc(1.38px+15.416vw)] mt-hero-gap-mobile md:ml-[calc(1.38px+38.176vw)] md:mt-hero-gap-tablet lg:mt-hero-gap-desktop">
 					we celebrate<br/>diversity and<br/>emphasize<br/>authenticity.
 				</p>
-				<h2 className="max-w-[1800px] mx-auto px-4 mt-[clamp(100px,-32.99px+12.89vw,200px)] md:px-5 lg:px-14 font-serif leading-[80%] text-[clamp(90px,34.74px+14.737vw,300px)] text-right">BERLIN<br/>BASED</h2>
+				<h2 className="px-gutter mt-hero-gap-mobile md:mt-hero-gap-tablet lg:mt-hero-gap-desktop font-serif leading-[80%] text-[22.89vw] md:text-[16.4vw] text-right"><span>BERLIN</span><br/>BASED</h2>
 			</section>
 		</main>
 	)
