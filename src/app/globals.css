@@ -5,7 +5,7 @@
 	--color-vvook-white: #f1f1f1;
 	--color-vvook-black: #080808;
 	--color-vvook-grey: #8C8C8C;
-	--font-mono: var(--font-inconsolata), monospace;
+	--font-mono: var(--font-anonymous-pro), monospace;
 	--font-serif: var(--font-playfair), serif;
 
 	--text-step--2: clamp(0.5208rem, 0.5066rem + 0.0565vw, 0.56rem);
@@ -26,13 +26,23 @@
 }
 
 @utility font-menu {
-	font-family: var(--font-inconsolata), monospace;
+	font-family: var(--font-mono), monospace;
 	font-size: clamp(0.625rem, 0.534rem + 0.362vw, 0.875rem);
+	text-transform: uppercase;
 }
 
 @utility font-body {
-	font-family: var(--font-inconsolata), monospace;
-	font-size: clamp(0.8125rem, 0.7899rem + 0.0901vw, 0.875rem);
+	font-family: var(--font-mono), monospace;
+	font-size: 14px;
+	text-transform: uppercase;
+	line-height: 0.95;
+}
+
+@utility font-title {
+	font-family: var(--font-serif), serif;
+	font-size: clamp(1.75rem, 1.57rem + 0.777vw, 2.50rem);
+	text-transform: uppercase;
+	line-height: 0.85;
 }
 
 @utility hero-title {

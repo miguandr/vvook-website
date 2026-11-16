@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Playfair_Display } from "next/font/google";
 import { Inconsolata } from "next/font/google";
+import { Anonymous_Pro } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -11,10 +12,10 @@ const playfairDisplay = Playfair_Display({
 	variable: "--font-playfair",
 });
 
-const inconsolata = Inconsolata({
+const anonymousPro = Anonymous_Pro({
 	weight: ["400", "700"],
 	subsets: ["latin"],
-	variable: "--font-inconsolata",
+	variable: "--font-mono",
 })
 
 
@@ -28,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inconsolata.variable} ${playfairDisplay.variable} h-full antialiased`}
+      className={`${anonymousPro.variable} ${playfairDisplay.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-vvook-black text-white">
 		<Header />
