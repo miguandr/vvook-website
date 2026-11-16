@@ -908,3 +908,116 @@ Three commits:
 - [ ] All Session 09 pending items carried forward unchanged (mainPhoto spot-check, orphaned field cleanup, unused SVG, contact page stub, legal pages, Logo.tsx size discrepancy, back-arrow nav idea, Phase 5 GSAP backlog, Sanity org transfer, Prettier).
 
 **Starting point for next session**: the clamp/measurement teaching session Miguel asked for, *then* the rest of the About page.
+
+---
+
+## Session 11 — 2026-11-10
+
+### Goal
+
+Close out two live bugs left over from the hero section (tablet spacing, mobile photo overlap), then scope the About page's remaining sections from Figma before building them.
+
+---
+
+### 1. The "no cambio nada" hero-gap bug — root cause was a missing third tier, not a caching issue
+
+The previous session's leading hypothesis was a stale dev-server cache (the same fix had resolved an earlier, similarly-symptomed bug that same day). A full `rm -rf .next` + restart + fresh tab did **not** fix this one — ruling that out conclusively. The real cause: the gap between "AGENCY"/the paragraph/"BERLIN BASED" only had two values (`mobile` and `desktop`), but the headline's font-size and photo size jump hard at `md:` (768px) *and again* in how they behave through the tablet range — a flat two-tier gap can't track a composition that has three visually distinct states. **Fix**: added a third flat value, `--spacing-hero-gap-tablet: 120px`, so mobile/tablet/desktop each get their own number.
+
+### 2. `min()` is the mirror of `max()` — a ceiling-only tool, for a *bounded* range
+
+The mobile hero photo (`w-[54.22vw] h-[74.12vw]`, pure `vw`, no bound) grew large enough on bigger phones (~487px+) to visually overlap "BERLIN BASED" before the `md:` breakpoint ever kicked in. The project's "no ceiling" rule (Session 10, `docs/DESIGN-SYSTEM.md`) is specifically about *open-ended* desktop growth — it doesn't apply inside a tier that's going to end at a hard breakpoint anyway (mobile dies at 768px no matter what). Mechanically:
+
+- `max(floor, fluid)` — only a **lower** bound, grows forever above it.
+- `min(fluid, ceiling)` — only an **upper** bound, shrinks forever below it.
+- `clamp(min, fluid, max)` is literally `max(min, min(fluid, max))` — both bounds combined. Use only the half you actually need.
+
+**Fix**: measured the width where the overlap starts in DevTools (487px, photo height computed = 360px there), then capped both dimensions with `min()`: `w-[min(54.22vw,264px)] h-[min(74.12vw,360px)]` — grows normally up to 487px, frozen from there to the `md:` handoff.
+
+### 3. Figma scoping: the hero's node IS the whole page, and prototype-only content doesn't show in a static export
+
+Asked Miguel for "the new frames" for the next About section (group photo + quote blocks + Boris Kralj) — turned out to be the *same* two node IDs already used for the hero (`958:1210` desktop / `913:655` mobile). A screenshot of the full node (not just the viewport-height crop used for the hero) revealed the entire page already exists in that one frame: hero → white block ("FOR US, SUCCESSFUL REPRESENTATION...") → a *second* text block ("OUR APPROACH IS PERSONAL, STRATEGIC AND SELECTIVE...") that didn't render in the static screenshot at all → Boris Kralj → footer. The second text block only appears in Figma's interactive Preview/prototype mode: on **desktop**, the 3-models photo stays pinned while the two text blocks swap as the user scrolls past (classic scroll-pin, will need GSAP ScrollTrigger — already in the stack for the talent-page glitch effect). **Mobile has no pin** — everything stacks in normal flow.
+
+**Lesson**: a Figma top-level node can represent an entire page, not just the section you built from it first — screenshot the *full* node height before assuming scope. And static screenshots miss anything gated behind scroll/click interaction; Preview mode is the only way to see it.
+
+### 4. Commit
+
+`refactor(design-system): migrate Header/Home/About to fluid tokens` (`5812261`) — bundles the tablet hero-gap tier, the mobile photo `min()` fix, and the `px-gutter`/logo-sizing migration for Header and Home that had been pending since Session 10.
+
+### Pending — Next Session
+
+- [ ] Build the white-block + Boris Kralj sections: GSAP ScrollTrigger pin on desktop, normal stacking on mobile (animation style for mobile still undecided). This is **Phase 5** work, scheduled for a dedicated session — not immediately next.
+- [ ] Header nav text still on its own ad-hoc clamp, not yet on the `step` scale (see Session 12).
+- [ ] Footer and `[slug]/page.tsx` not yet migrated to the token system.
+- [ ] Logo aspect-ratio discrepancy (111×24 vs 220×71 — different ratios for "the same" logo) flagged earlier, never actually resolved.
+
+---
+
+## Session 12 — 2026-11-12
+
+### Goal
+
+No new building. A dedicated conceptual review of `globals.css`, end to end, before starting the next About page section — Miguel asked for this explicitly, setting Phase 5 (GSAP/ScrollTrigger) aside entirely for the day. The session surfaced a real, previously invisible bug and produced a cleaner, more defensible rule for *where* to put a ceiling on a fluid value.
+
+---
+
+### 1. Why `font-menu` and `animate-focus-pull` are two separate utilities, not one
+
+Starting question: why not merge them and stop "repeating `@utility`"? Answer, with evidence from the actual code: the talent grid's `<Image>` only ever needs the animation (it's a photo, no text) and the name `<span>` needs *both* at once (`font-menu` **and** `group-hover:animate-focus-pull` on the same element). One utility = one job, composed per element as needed — exactly the point of Tailwind's atomic-class model. Fusing them would force every element that needs one to also carry the other.
+
+### 2. Reconstructing a fluid formula's slope/intercept from its two real reference widths
+
+`font-menu`'s font-size, `max(10px, 8.55px + 0.360vw)`, reproduces exactly from `10px @ 402px` → `14px @ 1512px` (the project's two standard Figma reference widths):
+
+```
+slope      = (14 − 10) / (1512 − 402) = 0.0036  →  0.360vw
+intercept  = 10 − 402 × 0.0036 = 8.55px
+```
+
+Same mechanical check Session 10 asked Miguel to learn — applied here to an *existing* token instead of a new one, to confirm he could read a formula backwards and not just write one forwards.
+
+### 3. A tangent worth remembering for Phase 5: per-word text-split reveals
+
+While poking at an inspiration site's DevTools, Miguel found each word of a paragraph wrapped in its own `inline-block` div, inside a container flagged for a scroll/load-triggered reveal. That's the standard "stagger reveal" pattern (GSAP's `SplitText` plugin does this automatically) — `inline-block` per word keeps normal text wrapping while letting each word animate independently. Not built, just filed away for when Phase 5 starts.
+
+### 4. The real bug: `--font-size-step-X` is not a Tailwind v4 namespace — `--text-step-X` is
+
+Miguel proposed `--text-step-X` as an alternative to the existing `--font-size-step-X` scale. Rather than guess which was "more correct," compiled both through the actual installed Tailwind build (`node_modules/@tailwindcss/node`, v4.3.3) with a throwaway test file:
+
+```css
+@theme { --font-size-step-0: 1.111rem; --text-step-9: 2.222rem; }
+```
+
+Result: `.text-step-9 { font-size: var(--text-step-9); }` was generated. `--font-size-step-0` did not appear *anywhere* in the output — not as a utility, not even as a plain CSS variable. Tailwind v4's real theme namespace for font-size is `--text-*` (confirmed independently by grepping the installed `tailwindcss/theme.css`, which defines `--text-xs`, `--text-sm`, etc.). The entire `--font-size-step--2`…`step-6` scale had been dead code since the day it was written — invisible only because nothing had used `text-step-X` as a class yet. Same silent-failure shape as the `mt-hero-gap-mobile` naming confusion from the previous session, different root cause. Fixed by renaming the whole scale to `--text-step-X`.
+
+### 5. The ceiling rule, refined twice in one session
+
+First pass (Miguel's own framing): a binary split — "composition" elements (serif words, hero photos, decorative lines, big in-composition gaps, full-bleed side margins) grow forever; "reading/UI" elements (body text, menu, buttons, mono statements) grow a little then stop. This immediately explained why the type scale needing a ceiling wasn't actually a contradiction of Session 10's "no ceiling" rule — it just meant the type scale belongs in the *other* category.
+
+Second pass (an external analysis of award-winning sites Miguel brought in) refined it further: almost nothing should freeze exactly at the original Figma reference width (1512). Composition elements keep growing with no ceiling at all; *everything else* should keep growing a bit past 1512 and only freeze around **1920–2560** — "same growing line, just move the stop further out." Verified the worked example from that analysis by hand (`step-0`'s formula gives 14px @ 1512, ≈14.7px @ 1920, ≈15.9px @ 2560 — all checked and correct) before trusting it.
+
+**Caught two real mistakes applying this rule:**
+- Gutter's first rem-conversion attempt (`clamp(1rem, -1.11rem + 8.404vw, 6.83rem)`) used the *correct* ceiling value (6.83rem ≈ 109px) but a recalculated slope that reaches that ceiling at 1512, not 2560 — the exact mistake the rule exists to prevent, just disguised as a "new" formula instead of an obviously-wrong number. Fix: keep the *original* slope/intercept (it already passes through the real Figma-derived points) and only change the clamp's third argument.
+- Miguel's own stated rule classifies "side margins, if the layout is full-bleed" as a *no-ceiling* composition element — and Vvook *is* full-bleed (confirmed: `max-w-[1800px]` was deliberately removed from Header/Home in Session 11). That rule was superseded by the more refined one before it was ever applied, which was the right call in the end (gutter does get a ceiling, just a high one) — but worth noting the contradiction existed for a few messages, since the rule itself evolved mid-session.
+
+### 6. Concrete changes made to `globals.css` and `about/page.tsx`
+
+- `--font-size-step-X` → `--text-step-X` (the real bug fix, §4), each ceiling recalculated to ~1920 (steps −2 to 1) or ~2560 (steps 3–6) instead of 1512.
+- `--spacing-gutter` converted from `px` to `rem` (matches the accessibility rule already in `docs/DESIGN-SYSTEM.md` — `rem` respects browser text-zoom, `px` doesn't) and given a ceiling at 2560 (`clamp(1rem, -0.0865rem + 4.3243vw, 6.83rem)`).
+- `font-menu`'s font-size given its own ceiling (`clamp(10px, 8.55px + 0.360vw, 15.46px)`, computed at 1920) — it was still plain `max()`, i.e. no ceiling at all, even after the rule was adopted for everything else.
+- New `body-menu`/`font-body` utility for the hero paragraph, with its own bespoke 13→14px formula (deliberately *not* reusing `--text-step-0`, which floors at 12px — a different, smaller target than the Figma-specified menu/paragraph sizing).
+- New `hero-title` utility (`font-serif`, `22.89vw`/`16.4vw` via `md:`, `line-height: 0.8`) to stop repeating the exact same three declarations on both `h1` and `h2` in `about/page.tsx`.
+- `--spacing-hero-gap-desktop` converted from a flat `235px` to a fluid `15.54vw` (reproduces 235px exactly at the 1512 reference, now grows slightly beyond it instead of freezing forever) — applying the Session-11-pending question about whether the desktop hero-gap tier should ever grow.
+- Caught and fixed a `font-body` vs `body-menu` class/utility name mismatch while reviewing — same silent-no-op shape as §4, just in component code instead of the theme.
+- `--font-display` renamed to `--font-mono` — noted but **not** fixed: `style-guide/page.tsx` still references the old `font-display` utility class, which no longer exists. Left as a known, filed-away loose end.
+
+### 7. Commit
+
+`fix(design-system): correct token namespace and ceiling conventions` (`202fb12`).
+
+### Pending — Next Session (Saturday)
+
+- [ ] A dedicated pass on *when* to use `vw` vs a fixed point vs needing a ceiling at all — Miguel wants this made explicit as a reviewable decision tree, not something he has to re-derive from scratch each time.
+- [ ] Revisit `about/page.tsx` for further simplification now that `hero-title`/`body-menu` exist — may or may not have more duplication worth collapsing.
+- [ ] Fix the dangling `font-display` → `font-mono` rename in `style-guide/page.tsx` (§6, filed, not urgent).
+- [ ] Phase 5 (GSAP ScrollTrigger pin + per-word text-split reveal, §3 of this session) still not started — intentionally deferred again.
+- [ ] All Session 11 pending items not covered above (Header nav text scale migration, Footer/model-page token migration, Logo aspect-ratio discrepancy) still open.
