@@ -1021,3 +1021,65 @@ Second pass (an external analysis of award-winning sites Miguel brought in) refi
 - [ ] Fix the dangling `font-display` → `font-mono` rename in `style-guide/page.tsx` (§6, filed, not urgent).
 - [ ] Phase 5 (GSAP ScrollTrigger pin + per-word text-split reveal, §3 of this session) still not started — intentionally deferred again.
 - [ ] All Session 11 pending items not covered above (Header nav text scale migration, Footer/model-page token migration, Logo aspect-ratio discrepancy) still open.
+
+---
+
+## Session 13 — 2026-11-16
+
+### Goal
+
+A long, single-day push: swap the loaded mono font, unify the Footer across breakpoints, fix two real bugs on the model detail page, then build the About page's mobile-only white-block and founder sections from Figma. Ends with the "tablet reuses desktop" decision for the next unbuilt piece.
+
+---
+
+### 1. Client font swap: Inconsolata → Anonymous Pro, and a font-token bug caught (and half-fixed) along the way
+
+Client changed the mono typeface. Verified the swap actually worked by reading the real compiled CSS rather than trusting "I changed it everywhere" — it did, but exposed a second, more subtle issue: `--font-mono` in `globals.css`'s `@theme` was rewritten to reference `var(--font-anonymous-pro)`, a variable name the Next.js font loader (`layout.tsx`) never actually exports — it still calls its export `--font-mono`, same name as the Tailwind theme role token. That's the identical self-reference trap from Session 12, just via a *missing* variable instead of a *circular* one this time. It doesn't currently break anything, for the same reason as before: Next.js's own font-loader CSS is unlayered, Tailwind's `@theme` output lives in `@layer theme`, and unlayered rules always win over layered ones regardless of source order — so the correct value still wins the cascade by accident. Flagged as a real but non-urgent fix: rename the loader's `variable` to something distinct (e.g. `--font-anonymous-pro`) so the two names stop colliding.
+
+### 2. Footer: mobile unified with desktop, plus a `padding-inline` vs `padding-left` cascade surprise
+
+Mobile Footer used to show only a copyright line; desktop had the full ticker/email/phone/legal block. Merged into one responsive tree (eliminates the need for a dedicated `/contact` page later — the footer itself carries full contact info everywhere). Phone number became a real `tel:` link on mobile (styled like the email link, white) with `lg:pointer-events-none` to keep it inert-but-grey on desktop, where dialing a phone number does nothing useful.
+
+One CSS lesson mid-build: `px-gutter` (which compiles to `padding-inline: var(--spacing-gutter)`) and a later `pl-16` (`padding-left: ...`) on the *same* element don't do what you'd expect from reading them in source order — Tailwind emits `pl-16` *after* `px-gutter` in the compiled stylesheet regardless of the order they're written in the class string, so `pl-16` wins the left side specifically, while `px-gutter`'s *right* side keeps applying untouched. Removing `px-gutter` entirely therefore only changes the right padding — which looked like "nothing happened" because the text wasn't reaching that edge anyway. Verified by actually compiling both utilities and reading the generated CSS side by side, not by guessing from class names.
+
+### 3. Model detail page: two real bugs, both about *where CSS measures from*
+
+- **Gallery fan asymmetry**: the mobile photo "fan" on either side of the counter had both containers anchored toward their own *outer* (screen) edge (`justify-start`/`justify-end` picked the wrong direction for the left side specifically). When one side had a different photo count than the other, the *inner* edge — the one that actually matters, since it sets the distance from the counter — landed in a different place each time, because the stack's total width differs but the fixed point was the wrong end of the box. Fixed by anchoring both sides toward the counter instead of toward the screen edge, matching what the desktop version already did correctly.
+- **Overlay position nesting**: after moving the talent name onto the photo as a bottom overlay, the gallery counter and Instagram icon — originally positioned `top-full` relative to the *whole photo* — got nested one level too deep (inside the name's own small flex wrapper), so `top-full` started measuring from that tiny wrapper's height instead. Same root cause as Session 10's "absolute positions relative to the nearest positioned ancestor, not wherever it visually belongs" lesson, just a year-later recurrence on a different page.
+
+### 4. About page, mobile only: the white-block statement sections + founder quote
+
+Built from the same Figma node already used for the hero (`958:1210`/`913:655` — confirmed again this session that one node can be an entire page). Pulled real values this time via `get_design_context` after guessing wrong from memory of an old screenshot — caught and corrected: the statement headlines are Playfair Display (a `font-title` utility, serif, not mono), the small paragraphs are solid black/white (not grey, despite the hero paragraph's grey precedent), and the backgrounds/colors mostly matched existing tokens except the statement text itself, which Figma specifies as literal `black`/`white`, not the `vvook-black`/`vvook-white` tokens.
+
+Smaller lessons from this build, each hit live and fixed on the spot:
+- **`flex-flex-col` is not `flex flex-col`** — a single hyphenated string isn't two classes; without a real flex container, `gap` silently does nothing and children just stack by block-level default (which can coincidentally look right, masking the bug).
+- **Margin-collapse through the parent**: `margin-top` on a section's first child collapses with the section itself if the section has no padding/border, pushing the *whole section* down instead of creating space inside it — the fix is `padding` on the section, not `margin` on the child. Confirmed the "90px gap between two paragraphs" case correctly needs `gap` on a flex wrapper instead, per `docs/DESIGN-SYSTEM.md`'s existing rule, specifically because `gap` never has this collapsing behavior.
+- **JSX strips whitespace across line breaks between sibling elements** — `<span>WORD</span>` on one line and `<span>NEXT</span>` on the next, with nothing but a newline+indentation between them, renders with *zero* space, because JSX's whitespace-collapsing rule treats any run of whitespace containing a newline as if it weren't there. Fixed with an explicit `{" "}` between the two spans — that's a JS expression, not raw JSX whitespace, so it survives.
+- **A `position: relative` box always paints above static (non-positioned) siblings, regardless of DOM order.** The Boris photo (given a `scale-120` zoom with no `overflow-hidden` on its `relative` wrapper) visually overflowed into the space where the founder quote sat — and because the photo's wrapper was positioned and the quote wasn't, the photo painted on top and hid the text entirely, even though the quote came later in the markup. The real fix is `overflow-hidden` on the photo's wrapper (clip the zoom at its own box); a large padding "fixed" it only by accident, by pushing the text physically outside the overlap zone.
+- **A block-level element narrower than its container doesn't center or right-align itself** — it just sits at whatever the default (left, normally) alignment is, leaving the unused width looking like a stray margin on the other side. `block` + `ml-auto` is the fix for "pin this fixed-width element to the right of a wider container."
+- **Cropping (`object-fit`/`object-position`) and zooming (`transform: scale()`) are different tools.** `object-cover` + `object-position` only choose *which part* of an image is visible inside its box — they never make the subject bigger. An actual `scale()` transform (with `overflow-hidden` on the parent to clip the result) is what makes something look closer.
+- `object-position`'s vertical percentage is easy to get backwards: `0%` keeps the *top* of the image visible (crops the bottom — cuts off feet); `100%` keeps the *bottom* visible (crops the top — removes headroom). Got this backwards on the first attempt.
+
+### 5. Scope decision for next session
+
+Tablet will reuse the **desktop** composition (the scroll-pinned layout, not yet built), not get its own third variant — so this section's eventual breakpoint split is mobile-vs-(tablet+desktop), a two-way split like `md:hidden`, not the three-tier mobile/tablet/desktop pattern used for the hero's `hero-gap`.
+
+### 6. Review before closing — caught in the final read-through, not yet fixed
+
+Three content issues, left for Miguel to correct since they're copy, not code: **"SUCCESFUL"** → missing an S (should be "SUCCESSFUL"); **"WE RESPRESENT"** → extra R (should be "WE REPRESENT"); and the founder's name is spelled **"KRAJL"** in three places (visible text + two `alt` attributes) when it should be **"KRALJ"**.
+
+### 7. Commits this session
+
+Four commits, split by work unit rather than by file:
+- `fix(design-system): rewire font tokens, add font-title utility` (`49609cc`)
+- `refactor(footer): unify mobile and desktop content, add tap-to-call` (`9eaee75`)
+- `fix(model-page): overlay name on photo, balance gallery fan symmetry` (`3bdc830`)
+- `feat(about): build mobile white-block and founder sections` (`ddc9661`)
+
+### Pending — Next Session
+
+- [ ] Fix the three content typos from §6 (quick, not code).
+- [ ] Rename the font loader's `variable` (§1) so `--font-mono` stops relying on the unlayered-rule accident to work.
+- [ ] Build the About page's tablet+desktop composition (scroll-pinned photo + swapping text, Boris section) — Figma frame already linked, GSAP ScrollTrigger concept still to be taught first per Miguel's standing request.
+- [ ] Decide whether the Boris photo's final crop (`scale-120`, `object-[center_145%]`, `h-[140vw]`) is the final tuning or still provisional.
+- [ ] All earlier-session carried-forward items (Header nav text scale, Logo aspect-ratio discrepancy, `font-display` dangling reference in `style-guide/page.tsx`) still open.
