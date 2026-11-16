@@ -28,25 +28,10 @@ export default async function Page({ params }: {params: Params}) {
 	return (
 		<main className="pt-8 overflow-x-hidden">
 			{/* Mobile/Tablet */}
-			<div className="flex items-center justify-center gap-2 mb-3">
-				<h1 className="font-menu text-[20px] lg:text-[24px] uppercase">
-					{talent.name}
-				</h1>
-				{talent.instagram && (
-					<a
-					href={talent.instagram}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="md:hidden"
-					>
-					<InstagramIcon color="text-white"/>
-					</a>
-				)}
-			</div>
 
 			{/* Main Photo */}
 			{talent.gallery?.[0] && (
-				<div className=" mt-2 lg:mt-2">
+				<div className="relative mt-2 lg:mt-2">
 					{/* Mobile */}
 					<Image
 						src={urlFor(talent.gallery[0]).width(900).height(1522).url()}
@@ -56,16 +41,32 @@ export default async function Page({ params }: {params: Params}) {
 						className="w-full h-auto md:hidden"
 						priority
 					/>
+					<div className="absolute inset-x-0 bottom-0 h-1/3 bg-linear-to-t from-vvook-black to-transparent pointer-events-none md:hidden">
+						<div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-2 md:hidden">
+							<h1 className="font-menu text-[20px] text-white uppercase">
+								{talent.name}
+							</h1>
+							{talent.instagram && (
+								<a
+									href={talent.instagram}
+									target="_blank"
+									rel="noopener noreferrer"
+									>
+									<InstagramIcon color="text-white"/>
+								</a>
+							)}
+						</div>
+					</div>
 				</div>
 			)}
 
 			{/* Mobile: Gallery + Counter */}
-			<div className="md:hidden relative h-30">
+			<div className="md:hidden relative h-hero-gap-tablet">
 				<p className=" absolute left-1/2 -translate-x-1/2 top-1/2 font-menu text-[12px] text-vvook-yellow ">
 					{`${String(currentPosition).padStart(2, "0")}/${String(talent.gallery?.length ?? 0).padStart(2, "0")}`}
 				</p>
 				{talent.gallery && talent.gallery.length > 5 && (
-					<div className="absolute left-0 flex  overflow-hidden items-end py-6  w-45">
+					<div className="absolute -left-2 flex justify-end overflow-hidden items-end py-6 w-45">
 						{[...leftPhotos].reverse().map((photo, i) => {
 							const distance = leftPhotos.length - 1 - i;
 							return (
@@ -91,7 +92,7 @@ export default async function Page({ params }: {params: Params}) {
 					</div>
 				)}
 				{talent.gallery && talent.gallery.length > 1 && (
-					<div className="absolute right-0 flex justify-end overflow-hidden py-6 items-end w-45">
+					<div className="absolute -right-2 flex justify-start overflow-hidden py-6 items-end w-45">
 						{[...rightPhotos].map((photo, i) =>(
 							<div
 								key={i}
@@ -146,7 +147,7 @@ export default async function Page({ params }: {params: Params}) {
 
 				{/* Main Photo */}
 				{talent.gallery?.[0] && (
-					<div className="relative aspect-900/1222 h-[clamp(400px,calc(100vh-120px),670px)] z-20">
+					<div className="relative aspect-900/1222 h-[clamp(480px,calc(100vh-120px),700px)] z-20">
 						<Image
 							src={urlFor(talent.gallery[0]).width(900).height(1222).url()}
 							alt={talent.name ?? "Talent"}
@@ -155,19 +156,24 @@ export default async function Page({ params }: {params: Params}) {
 							className="object-contain"
 							priority
 						/>
-						<p className="absolute top-full left-0 font-menu text-[12px] lg:text-[14px] text-vvook-yellow">
-							{`${String(currentPosition).padStart(2, "0")}/${String(talent.gallery?.length ?? 0).padStart(2, "0")}`}
-						</p>
-						{talent.instagram && (
-							<a
-								href={talent.instagram}
-								target="_blank" rel="noopener noreferrer"
-								className="absolute top-full right-0 mt-1">
-								<InstagramIcon color="text-white" />
-							</a>
-						)}
+						<div className="absolute inset-x-0 bottom-0 h-1/3 bg-linear-to-t from-vvook-black to-transparent pointer-events-none"/>
+							<div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-2">
+								<h1 className="font-menu text-[clamp(18px,10.59px+0.490vw,21px)] text-white">
+									{talent.name}
+								</h1>
+								<p className="absolute top-full left-0 font-menu text-[12px] text-vvook-yellow">
+									{`${String(currentPosition).padStart(2, "0")}/${String(talent.gallery?.length ?? 0).padStart(2, "0")}`}
+								</p>
+								{talent.instagram && (
+									<a
+										href={talent.instagram}
+										target="_blank" rel="noopener noreferrer"
+										className="absolute top-full right-0 mt-1">
+										<InstagramIcon color="text-white" />
+									</a>
+								)}
+							</div>
 					</div>
-
 				)}
 
 				{/* Right Fan */}
@@ -196,7 +202,8 @@ export default async function Page({ params }: {params: Params}) {
 			</div>
 
 			{/* Measuraments */}
-			<div className={`grid ${extraValue != null ? "grid-cols-6" : "grid-cols-5"} justify-items-center lg:gap-x-[clamp(92px,44.5px+4.64vw,128px)] max-w-md mx-auto mt-8 lg:mt-12 mb-4 font-menu text-[12px] lg:text-[14px] uppercase text-center justify-center text-vvook-grey`}>
+			<div className={`grid ${extraValue != null ? "grid-cols-6" : "grid-cols-5"} justify-items-center max-w-md mx-auto mt-8 mb-4 font-menu text-[12px] text-center justify-center text-vvook-grey
+				lg:mb-2 lg:gap-x-[clamp(92px,44.5px+4.64vw,128px)] lg:mt-[clamp(32.00px,-27.29px+3.922vw,48.00px)] lg:text-[clamp(12.00px,9.71px+0.223vw,14.00px)]`}>
 				<div><p>Height</p><p>{talent.height}</p></div>
 				<div><p>Chest</p><p>{talent.chest}</p></div>
 				<div><p>Waist</p><p>{talent.waist}</p></div>
