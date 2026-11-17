@@ -1083,3 +1083,71 @@ Four commits, split by work unit rather than by file:
 - [ ] Build the About page's tablet+desktop composition (scroll-pinned photo + swapping text, Boris section) — Figma frame already linked, GSAP ScrollTrigger concept still to be taught first per Miguel's standing request.
 - [ ] Decide whether the Boris photo's final crop (`scale-120`, `object-[center_145%]`, `h-[140vw]`) is the final tuning or still provisional.
 - [ ] All earlier-session carried-forward items (Header nav text scale, Logo aspect-ratio discrepancy, `font-display` dangling reference in `style-guide/page.tsx`) still open.
+
+---
+
+## Session 14 — 2026-11-17
+
+### Goal
+
+Build the About page's TABLET breakpoint for the three remaining sections (white block, models photo + "our approach" text, Boris founder section), then a first pass at redesigning the Footer's legal row. Revises Session 13's closing plan along the way: tablet ended up as its own distinct composition, not a straight reuse of desktop.
+
+---
+
+### 1. White block: the mandatory space scale existed only on paper
+
+`docs/DESIGN-SYSTEM.md` has required a fluid `--space-*` scale since Session 10, but it was never actually added to `globals.css` — only the type scale (`--text-step-*`) made it in. So `gap-22.5`/`ml-36.5`/`mb-13.5` (flat Tailwind spacing) stayed fixed while `font-title` grew with the viewport, crowding the two paragraphs together as the screen widened.
+
+Pulled the real Figma mobile measurements via `get_design_context` rather than guessing — and the existing px values turned out to already be Figma-accurate (90px gap, 146px indent, 54px bottom space). The bug was never wrong numbers, it was *frozen* numbers next to a growing font.
+
+Converted the second paragraph to a `max-w` `clamp()` box with hardcoded `<br/>`s removed (reusing the fixed-font-size + constrained-box = predictable-wrap pattern from the desktop section) — then put the `<br/>`s back once tablet's wider box needed the exact same 8-line grouping Miguel had designed; confirmed harmless at mobile, since the narrower box already wrapped there on its own.
+
+Two syntax bugs caught by re-reading the file instead of guessing from a screenshot: a missing `]` silently dropped the entire `max-w` utility (Tailwind discards malformed arbitrary values rather than erroring), and a `clamp(min, val, max)` written with `min > max` degenerates to a frozen constant — per spec, `clamp()` always returns `min` when `min` exceeds `max`, ignoring the preferred value entirely.
+
+### 2. Models photo + "our approach" text: two columns, flipped visually without touching the DOM
+
+Wrapped the previously-separate `<Image>` and text `<section>` into one shared `md:grid` parent, then used `order-1`/`order-2` to swap which column each one visually occupies (text left, photo right) at tablet — while keeping mobile's existing DOM order (photo, then text) untouched, so its stacked rendering needed zero changes.
+
+Sized the photo as a percentage of its own grid column plus `aspect-ratio`, not `vw` — the same fix applied to the Boris photo last session, now proven on a second section.
+
+Found a real bug through testing: pushing the text item down with `margin-top` while the parent grid used `items-center` silently grew the shared ROW (margin counts toward an item's box height), which re-centered the PHOTO too and visibly separated it from the white section above. Padding does the exact same thing, for the same reason. Fixed with `translate-y` instead — a transform applies after layout is already computed, so it can never inflate a shared grid row's height.
+
+### 3. Boris section at tablet: desktop's structure, inverted
+
+DOM order (photo, then text) already matched the desired visual order here, so no `order` trick was needed — unlike section 2. One sign-flip worth remembering when mirroring a layout: desktop's `pl-[15%]` (biasing text toward the photo on its right) had to become `pr-[15%]` once the photo moved to the left — same intent, opposite side.
+
+Built as a brand-new `<section>` rather than retrofitting mobile's markup: mobile's full-bleed `Boris_mobile.jpg` treatment (`scale-120`, `h-[150vw]`) is too different from desktop's boxed, `aspect-ratio`-constrained approach to share classes cleanly. Reuses desktop's photo asset and structure with its own tablet-scaled numbers.
+
+### 4. Footer legal row: first pass at a redesign, not finished
+
+Miguel shared an AI-drafted "Contact Iris" handoff doc (a future scroll/click-triggered full-screen contact overlay) and asked for a read, not an implementation. Clarifying it surfaced that the two trigger paths are not symmetric, despite the draft's single unified `p = max(scrollP, clickP)` model: reaching it by scrolling to the end is just the page's last in-flow section (no close button, can't scroll further, scrolling back up is how you leave); reaching it by clicking "Contact" is a real overlay with a CLOSE button, where the background stays scrollable and dismissal only happens via explicit close — never by scroll. That whole feature (and its GSAP transitions) is deferred to a dedicated animations session, per the standing rule to teach ScrollTrigger before writing any of it.
+
+Split out the one piece that's pure layout, no animation: the Footer's legal row.
+- Collapsed three stacked columns (legal links / address / site credit) into three single lines joined by `·` separators.
+- Replaced the draft's "everything white at 70% opacity" suggestion with Miguel's own clearer convention — white means link, grey means static text — a deliberate override of the AI draft, not an oversight.
+- `items-end` (box-edge alignment) misaligned the separator dots against the links, because the dots didn't share the links' font-size utility. Same root cause as the "BORIS KRALJ"/"FOUNDER" baseline bug from two sessions ago, recurring on a new element — `items-baseline`/matching font-size is the fix once sizes differ.
+- Not finished: mobile stacking (`flex-col`/`md:flex-row`) was proposed but not yet confirmed applied in the file; moving the phone number above the address is still an open question — scope (mobile-only vs. all breakpoints) and sizing (keep it large, or shrink to match the address) both undecided.
+
+### 5. Known bug introduced this session, not yet fixed
+
+`about/page.tsx` still references `/Boris june 2026_4.jpg` in two `<Image>` tags (the original desktop Boris section). That file was renamed mid-session — git's rename detection confirmed it's byte-identical to the new `Boris_mobile.jpg` — and a separate `Boris_desktop.jpg` now exists too. Both old references will 404 in the browser until updated to the correct new filename.
+
+### 6. Closed from Session 13
+
+The three content typos flagged in §6 last session ("SUCCESFUL", "WE RESPRESENT", "KRAJL") are no longer present in the file — fixed outside this conversation at some point, confirmed by reading the current file.
+
+### 7. Commits this session
+
+Two commits, split by work unit:
+- `feat(about): build tablet layout for white block, models, and Boris section` (`937798a`)
+- `refactor(footer): restructure legal row to inline groups with mobile stacking` (`51b5bd7`)
+
+### Pending — Next Session
+
+- [ ] Fix the two broken `/Boris june 2026_4.jpg` references in `about/page.tsx` (§5).
+- [ ] Decide and finish the Footer legal row's mobile stacking + phone/address repositioning (§4).
+- [ ] Contact Iris: once the two-trigger interaction model is fully settled, split its STATIC final-state visuals (buildable without GSAP) from its TRANSITIONS (deferred, needs ScrollTrigger concept taught first).
+- [ ] Revises Session 13's plan: tablet did NOT reuse desktop's composition directly — it ended up as its own grid/order variant per section. Worth remembering for future breakpoint work: "reuse desktop" is a starting hypothesis, not a commitment.
+- [ ] The section 13 TODO about the About page's scroll-pinned photo + swapping text (white block section 2, "OUR APPROACH"/"WE SUPPORT") is still open and still blocked on the same thing: GSAP ScrollTrigger concept not yet taught.
+- [ ] Rename the font loader's `variable` so `--font-mono` stops relying on the unlayered-rule accident to work (carried forward, untouched this session).
+- [ ] All earlier-session carried-forward items (Header nav text scale, Logo aspect-ratio discrepancy, `font-display` dangling reference in `style-guide/page.tsx`) still open.
