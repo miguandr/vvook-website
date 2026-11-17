@@ -33,17 +33,32 @@
 
 @utility font-body {
 	font-family: var(--font-mono), monospace;
-	font-size: 14px;
+	font-size: 0.875rem;
+	text-transform: uppercase;
+	line-height: 0.95;
+}
+
+@utility font-body-desktop {
+	font-family: var(--font-mono), monospace;
+	font-size: 0.85rem;
 	text-transform: uppercase;
 	line-height: 0.95;
 }
 
 @utility font-title {
 	font-family: var(--font-serif), serif;
-	font-size: clamp(1.75rem, 1.57rem + 0.777vw, 2.50rem);
+	font-size: clamp(1.75rem, 1.478rem + 1.081vw, 2.776rem);
 	text-transform: uppercase;
 	line-height: 0.85;
 }
+
+@utility font-title-desktop {
+	font-family: var(--font-serif), serif;
+	font-size: clamp(1.75rem, 0.89rem + 1.339vw, 2.50rem);
+	text-transform: uppercase;
+	line-height: 0.85;
+}
+
 
 @utility hero-title {
 	font-family: var(--font-serif);
