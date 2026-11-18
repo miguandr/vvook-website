@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Playfair_Display } from "next/font/google";
-import { Inconsolata } from "next/font/google";
 import { Anonymous_Pro } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+
+
 
 const playfairDisplay = Playfair_Display({
 	weight: "400",
@@ -25,6 +25,10 @@ export const metadata: Metadata = {
   authors: [{ name: "Miguel Andrade" }],
 };
 
+export const viewport: Viewport = {
+	themeColor: "#080808",
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -34,7 +38,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-vvook-black text-white">
 		<Header />
 		{children}
-		<Footer />
 	  </body>
     </html>
   );
