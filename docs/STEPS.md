@@ -1151,3 +1151,82 @@ Two commits, split by work unit:
 - [ ] The section 13 TODO about the About page's scroll-pinned photo + swapping text (white block section 2, "OUR APPROACH"/"WE SUPPORT") is still open and still blocked on the same thing: GSAP ScrollTrigger concept not yet taught.
 - [ ] Rename the font loader's `variable` so `--font-mono` stops relying on the unlayered-rule accident to work (carried forward, untouched this session).
 - [ ] All earlier-session carried-forward items (Header nav text scale, Logo aspect-ratio discrepancy, `font-display` dangling reference in `style-guide/page.tsx`) still open.
+
+---
+
+## Session 15 — 2026-11-18
+
+### Goal
+
+Build the standalone Contact page (mobile + desktop) from new Figma frames, add active-page indicators and a working Close button to the Header, fix a cluster of tablet bugs on the model detail page, install GSAP, and attempt a branded "Welcome Page" loading sequence — which ran into a real, documented Safari bug serious enough to abandon the feature rather than engineer around it tonight.
+
+---
+
+### 1. Contact page: reusing what already existed instead of rebuilding it
+
+Pulled two new Figma frames (mobile `1320:21`, desktop `1320:62`) for a yellow-circle "iris" contact screen. Two reuse wins before writing anything new:
+- The "Vvook" wordmark inside the circle isn't a new asset — it's the same `<Logo>` component the Header already uses, just rendered black instead of yellow/white.
+- The circle itself is a plain `rounded-full bg-vvook-yellow` div, not an exported SVG.
+
+Mobile and desktop ended up as genuinely separate blocks (not one block reshaped with `md:` overrides) once mobile needed its own one-off fixes (`height`, centering) that didn't apply to desktop — confirmed again this session that splitting is the right call once a tier needs real tuning, not just repositioning, matching the Legals/copyright/site-credit pattern from Session 14.
+
+One true centering bug: `flex justify-between` on the bottom Legals/copyright/Site-by row doesn't center the middle item on the page — it balances the GAPS between unequal-width siblings, which isn't the same thing. Fixed with `grid-cols-[1fr_auto_1fr]`: the middle column sizes to its own content, and the two outer `1fr` tracks are forced equal, so whatever's left over splits evenly and the middle is mathematically centered regardless of how wide Legals or Site-by are.
+
+### 2. Header: active-page dots, a real Close button, and a mix-blend-mode dead end
+
+Added a small dot next to whichever nav item matches the current route (color flips black/yellow with the page background, same logic already driving `logoColor`). The dot is **always rendered**, toggled with `invisible` rather than conditionally mounted — conditionally mounting it caused two bugs at once: the shared grid row's height changed when the taller sibling (the logo) disappeared, and removing a middle grid child shifted the remaining children's auto-placed columns. Same family of bug as the Boris-section grid issue from two sessions ago, now confirmed on a third kind of layout.
+
+Contact ↔ Close: the link becomes a `<button onClick={() => router.back()}>` only when already on `/contact`, so closing returns to whatever page the user actually came from — a plain `<Link href="/">` would always dump them on home regardless of where they started.
+
+Spent real time on `mix-blend-mode` for the nav text/logo, hoping it would auto-adapt against whatever's behind the fixed header (flat page color or, eventually, the photo grid). DevTools confirmed the property computed correctly, but visually nothing blended — `position: fixed` always creates its own stacking context, and `mix-blend-mode`'s backdrop only sees content painted within that same context. Since the header has no background of its own, there was nothing within its isolated context to blend against. Confirmed by testing (removing `z-10` didn't fix it, just broke the stacking order) that this isn't a quick CSS fix — the real solution is the site's scroll being JS-simulated (GSAP ScrollSmoother, no `position: fixed` anywhere) so header and content share one real stacking context. Reverted to the plain `isHome`-based color swap for now; this is explicitly future ScrollSmoother-phase work, not a pre-animations CSS task as first assumed.
+
+### 3. Model detail page: tablet gets its own Sanity crop instead of fighting CSS
+
+Tablet was silently sharing mobile's markup unchanged, so the tall mobile photo crop (902:679-ish) stretched to fill a much wider tablet viewport, and the gallery fan — anchored to the screen edges (`-left-2`/`-right-2`) rather than to the centered counter — drifted further away as the viewport widened.
+
+Tried fixing the photo's shape with `aspect-ratio` + `object-cover`/`object-contain` first — wrong tool. `cover` crops to fill a mismatched box (the "weird zoom" that cut off the model's head), `contain` avoids cropping but leaves empty space on the sides. Neither gives a correctly-cropped photo, because CSS can't invent pixels a server-side crop didn't keep. The real fix: request a *different* crop ratio directly from Sanity (`900x1200`, same technique the page already used for its separate mobile vs. desktop crops) — Sanity crops server-side respecting the photo's hotspot, keeping the face framed, which a blind CSS center-crop can't guarantee.
+
+Also fixed a real interaction bug: the Instagram link under the main photo was completely unclickable on mobile and tablet. `pointer-events-none` on the gradient-overlay wrapper (there to let taps pass through to the photo) was cascading down and disabling its own child link too — fixed by re-enabling `pointer-events-auto` on just the `<a>`.
+
+Settled on keeping tablet's fan/measurements as their *own* dedicated `md:` values (percentage offsets, a wider `max-w` for measurements) rather than making tablet reuse desktop's `flex-1`-based fan structure — reusing desktop was floated and tested, but its `thumbBase` clamp and desktop's absolute photo sizing didn't translate cleanly down to tablet widths without their own tuning anyway, so the dedicated-tablet-values approach (already proven for Contact and Footer) won out again.
+
+### 4. GSAP installed — and a from-scratch concept walkthrough
+
+Installed `gsap` and `@gsap/react` (the official `useGSAP` hook — auto-cleans up tweens on unmount, instead of hand-rolling cleanup in `useEffect`). Taught from first principles since this is the project's first GSAP code:
+- `gsap.timeline()` chains tweens that play in sequence by default; the position parameter (`"+=0.3"` relative, `"-=0.2"` overlap, a plain number for absolute time) controls exactly when a given tween starts if the default isn't right.
+- Animating a plain JS object (`{p: 0}`) plus an `onUpdate` callback is more powerful than animating a CSS property's string value directly — the callback can compute several derived effects (a `clip-path` string *and* a text counter) from the same one number.
+- `clip-path: inset(top right bottom left)` — same clockwise order as margin/padding — defines a window; moving only the `top` value from 100% (fully clipped, nothing visible) toward 0% reveals content like a blind sliding up, bottom edge fixed.
+- `stagger` animates a group with a built-in delay between each member, instead of hand-writing one tween per element.
+- `RoughEase` (needs `gsap.registerPlugin(RoughEase)` from `gsap/EasePack`) generates genuine jitter within a general shape — the right tool for "feels like it's loading," which smoothly-decelerating `power`/`expo` eases never will, no matter how many pauses are layered in by hand.
+
+### 5. The Welcome Page: built, debugged, and ultimately abandoned
+
+Built a full loading sequence: a black screen, the Vvook wordmark (split into its own standalone `LogoMark` component — no "Management" subtitle, kept because Figma provided it as separate per-letter `<path>`s, useful for a future staggered reveal) filling with yellow via the `clip-path` technique above, a segmented timeline for a non-robotic "bursty" fill, then a fill-and-drain exit before sliding the whole loader off-screen.
+
+Hit a real, documented iOS Safari bug partway through: Safari doesn't only read the `<meta name="theme-color">` tag for its own chrome color — it also samples the actual rendered background of `position: fixed` elements that touch the top/bottom of the viewport, and that sampled color can override the meta tag outright. Since the Welcome Page is exactly such an element, making its own background fully yellow (to test the "we zoom into the logo and it becomes the yellow home page" climax) made Safari's status bar turn yellow and **stay yellow** on every other page afterward, no matter what the correct per-page `theme-color` said. Confirmed precisely by testing: reverting just that one background to black immediately fixed it, with the explicit `theme-color` default in `layout.tsx` otherwise unchanged.
+
+A real, important nuance surfaced afterward: the `viewport.themeColor` export is resolved once per actual route *navigation* — it does not re-apply just because a client component's internal state changes on the same route (like the loader's animation finishing). So even with the correct static default in place the whole time, it never got a chance to "reassert itself" against Safari's live sampling during the one moment the screen was deliberately flashing a different color. Two real fixes exist for this (not applied, worth remembering): thin 1px fixed black strips at the very top/bottom edges for Safari to sample instead of the real content, or imperatively updating the theme-color meta tag's `content` attribute via JS at that exact moment (cheap — a single attribute write, not a page reload, unlike forcing `window.location.assign()` which *does* cost a full reload and was correctly ruled out). Decided not to spend more of this session engineering around it — **the Welcome Page is removed entirely** (`WelcomePage.tsx` deleted from use in `layout.tsx`; the file itself is still sitting on disk, untracked, and should be deleted outright next session).
+
+### 6. Revised plan for the entrance animation
+
+No separate loading screen. Instead, the home page animates itself directly on first load: logo appears, then the nav menu, then the photos — each staggered internally rather than popping in as one block. Should run **once per browser session** (`sessionStorage`, not `localStorage` — clears when the tab closes, unlike a flag that persists forever), checked independently by both `page.tsx` (logo + photos) and `Header.tsx` (menu text), since they're separate components that both mount on the same initial load and don't need to coordinate directly.
+
+For "columns 1 and 3 together, column 2 a beat behind" (not a flat left-to-right cascade), the plan is a `stagger` per column combined with absolute timeline positions — `.to(".col-1 .photo, .col-3 .photo", {...}, 0).to(".col-2 .photo", {...}, 0.2)` — not yet built; needs each column `<div>` in `page.tsx` to get an identifying class first.
+
+### 7. Commits this session
+
+Six commits, split by work unit:
+- `chore: install GSAP and @gsap/react for upcoming animation work` (`0283fda`)
+- `feat(contact): build standalone Contact page, remove site-wide Footer` (`701c8ec`)
+- `feat(header): add active-page dot indicators and a working Close button` (`bda9a16`)
+- `fix(model-page): tablet-specific photo crop, broken Instagram link, fan spacing` (`6a518b3`)
+- `fix(design-system): explicit black html/body background, retune gutter clamp` (`dfd9020`)
+- `feat(logo): add LogoMark, the Vvook wordmark without the tagline` (`b4be866`)
+
+### Pending — Next Session
+
+- [ ] Delete `src/components/WelcomePage.tsx` from disk — unused, never committed, just cleanup.
+- [ ] Build the home page's own entrance animation (logo → menu → photos, staggered by column, once per `sessionStorage`) — scoped and ready to start, not yet built.
+- [ ] If the Welcome Page ever comes back: the real fix is the thin-edge-strip trick or a JS-driven theme-color update timed to a GSAP callback — both identified, neither applied.
+- [ ] `mix-blend-mode` on the header is confirmed blocked on the ScrollSmoother/JS-simulated-scroll rewrite — don't attempt it again as a standalone CSS task.
+- [ ] All earlier-session carried-forward items (font-loader `--font-mono` variable rename, Header nav text scale, Logo aspect-ratio discrepancy, `font-display` dangling reference in `style-guide/page.tsx`) still open, untouched this session.
