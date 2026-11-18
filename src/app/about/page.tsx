@@ -18,7 +18,7 @@ export default function About() {
 				</h1>
 				<p className="font-body text-vvook-grey
 					ml-[calc(var(--spacing-gutter)+11.09vw)] mt-hero-gap-mobile
-					md:mt-hero-gap-tablet md:ml-[calc(var(--spacing-gutter)+33.85vw)]
+					md:mt-hero-gap-tablet md:ml-[calc(var(--spacing-gutter)+36.2vw)]
 					lg:mt-hero-gap-desktop">
 					we celebrate
 					<br/>
@@ -201,7 +201,7 @@ export default function About() {
 
 
 			{/* Desktop: Boris */}
-			<section className="hidden lg:grid lg:grid-cols-2 mt-32">
+			<section className="hidden lg:grid lg:grid-cols-2 mt-32 lg:mb-4">
 				<div className="flex justify-center items-center pl-[15%]">
 					<div className="flex flex-col items-start gap-4">
 						<p className="font-body-desktop text-[16px] text-vvook-grey">

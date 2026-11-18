@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
+html, body { background-color: var(--color-vvook-black); }
+
 @theme {
+
 	--color-vvook-yellow: #faff00;
 	--color-vvook-white: #f1f1f1;
 	--color-vvook-black: #080808;
@@ -19,7 +22,7 @@
 	--text-step-6:  clamp(2.2395rem, 1.8417rem + 1.5832vw, 3.3382rem);
 
 
-	--spacing-gutter: clamp(1rem, -0.0865rem + 4.3243vw, 6.83rem);
+	--spacing-gutter: clamp(1.00rem, 0.21rem + 3.162vw, 4.00rem);
 	--spacing-hero-gap-mobile: 165px;
 	--spacing-hero-gap-tablet: 120px;
 	--spacing-hero-gap-desktop: 15.54vw;
