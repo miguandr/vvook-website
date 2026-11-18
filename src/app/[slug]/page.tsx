@@ -32,17 +32,25 @@ export default async function Page({ params }: {params: Params}) {
 			{/* Main Photo */}
 			{talent.gallery?.[0] && (
 				<div className="relative mt-2 lg:mt-2">
-					{/* Mobile */}
 					<Image
 						src={urlFor(talent.gallery[0]).width(900).height(1522).url()}
 						alt={talent.name ?? "Talent"}
 						width={402}
 						height={679}
-						className="w-full h-auto md:hidden"
+						className="w-full h-auto md:hidden "
 						priority
 					/>
-					<div className="absolute inset-x-0 bottom-0 h-1/3 bg-linear-to-t from-vvook-black to-transparent pointer-events-none md:hidden">
-						<div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-2 md:hidden">
+					<Image
+						src={urlFor(talent.gallery[0]).width(900).height(1200).url()}
+						alt={talent.name ?? "Talent"}
+						width={450}
+						height={600}
+						className="hidden md:block lg:hidden w-[70%] h-auto mx-auto"
+						priority
+
+					/>
+					<div className="absolute inset-x-0 bottom-0 h-1/3 bg-linear-to-t from-vvook-black to-transparent lg:pointer-events-none lg:hidden">
+						<div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-2 lg:hidden">
 							<h1 className="font-menu text-[20px] text-white uppercase">
 								{talent.name}
 							</h1>
@@ -61,12 +69,12 @@ export default async function Page({ params }: {params: Params}) {
 			)}
 
 			{/* Mobile: Gallery + Counter */}
-			<div className="md:hidden relative h-hero-gap-tablet">
+			<div className="lg:hidden relative h-hero-gap-tablet">
 				<p className=" absolute left-1/2 -translate-x-1/2 top-1/2 font-menu text-[12px] text-vvook-yellow ">
 					{`${String(currentPosition).padStart(2, "0")}/${String(talent.gallery?.length ?? 0).padStart(2, "0")}`}
 				</p>
 				{talent.gallery && talent.gallery.length > 5 && (
-					<div className="absolute -left-2 flex justify-end overflow-hidden items-end py-6 w-45">
+					<div className="absolute -left-2 md:left-[15%] flex justify-end overflow-hidden items-end py-6 w-45">
 						{[...leftPhotos].reverse().map((photo, i) => {
 							const distance = leftPhotos.length - 1 - i;
 							return (
@@ -92,7 +100,7 @@ export default async function Page({ params }: {params: Params}) {
 					</div>
 				)}
 				{talent.gallery && talent.gallery.length > 1 && (
-					<div className="absolute -right-2 flex justify-start overflow-hidden py-6 items-end w-45">
+					<div className="absolute -right-2 md:right-[15%] flex justify-start overflow-hidden py-6 items-end w-45">
 						{[...rightPhotos].map((photo, i) =>(
 							<div
 								key={i}
@@ -117,7 +125,7 @@ export default async function Page({ params }: {params: Params}) {
 			</div>
 
 			{/* Desktop */}
-			<div className="hidden md:flex items-center w-full">
+			<div className="hidden lg:flex items-center w-full">
 				{/* Left Fan */}
 				<div className="flex-1 flex justify-end items-end min-w-0 overflow-hidden py-20">
 					{leftPhotos.length > 0 && [...leftPhotos].reverse().map((photo, i) => {
@@ -203,7 +211,8 @@ export default async function Page({ params }: {params: Params}) {
 
 			{/* Measuraments */}
 			<div className={`grid ${extraValue != null ? "grid-cols-6" : "grid-cols-5"} justify-items-center max-w-md mx-auto mt-8 mb-4 font-menu text-[12px] text-center justify-center text-vvook-grey
-				lg:mb-2 lg:gap-x-[clamp(92px,44.5px+4.64vw,128px)] lg:mt-[clamp(32.00px,-27.29px+3.922vw,48.00px)] lg:text-[clamp(12.00px,9.71px+0.223vw,14.00px)]`}>
+				md:max-w-2xl md:gap-x-[clamp(92px,44.5px+4.64vw,128px)] md:mt-[clamp(32.00px,-27.29px+3.922vw,48.00px)] md:text-[clamp(12.00px,9.71px+0.223vw,14.00px)]
+				lg:max-w-md lg:mb-2`}>
 				<div><p>Height</p><p>{talent.height}</p></div>
 				<div><p>Chest</p><p>{talent.chest}</p></div>
 				<div><p>Waist</p><p>{talent.waist}</p></div>
