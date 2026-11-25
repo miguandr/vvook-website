@@ -5,7 +5,6 @@ import "./globals.css";
 import Header from "@/components/Header";
 
 
-
 const playfairDisplay = Playfair_Display({
 	weight: "400",
 	subsets: ["latin"],
