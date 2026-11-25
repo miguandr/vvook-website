@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import InstagramIcon from "@/components/InstagramIcon";
 import { urlFor } from "@/sanity/lib/image";
 import Image from "next/image";
+import GalleryFanReveal from "@/components/GalleryFanReveal";
+import GalleryCoverflow from "@/components/GalleryCoverFlow";
 
 
 type Params = Promise<{ slug: string }>;
@@ -27,6 +29,7 @@ export default async function Page({ params }: {params: Params}) {
 
 	return (
 		<main className="pt-8 overflow-x-hidden">
+			<GalleryFanReveal />
 			{/* Mobile/Tablet */}
 
 			{/* Main Photo */}
@@ -80,7 +83,7 @@ export default async function Page({ params }: {params: Params}) {
 							return (
 								<div
 									key={i}
-									className={`${i === 0 ? "" : "-ml-1"} ${thumbWidths[distance]} shrink-0`}
+									className={`fan-left ${i === 0 ? "" : "-ml-1"} ${thumbWidths[distance]} shrink-0`}
 									style={{
 										transform: `perspective(40px) rotateY(${distance === 0 ? 25 : 30}deg)`,
 										zIndex: 10 - distance,
@@ -104,7 +107,7 @@ export default async function Page({ params }: {params: Params}) {
 						{[...rightPhotos].map((photo, i) =>(
 							<div
 								key={i}
-								className={`${i === 0 ? "" : "-ml-1"} ${thumbWidths[i]} shrink-0`}
+								className={`fan-right ${i === 0 ? "" : "-ml-1"} ${thumbWidths[i]} shrink-0`}
 								style={{
 									transform: `perspective(40px) rotateY(${i === 0 ? -25 : -30}deg)`,
 									zIndex:10 - i,
@@ -125,89 +128,10 @@ export default async function Page({ params }: {params: Params}) {
 			</div>
 
 			{/* Desktop */}
-			<div className="hidden lg:flex items-center w-full">
-				{/* Left Fan */}
-				<div className="flex-1 flex justify-end items-end min-w-0 overflow-hidden py-20">
-					{leftPhotos.length > 0 && [...leftPhotos].reverse().map((photo, i) => {
-						const distance = leftPhotos.length - 1 - i;
-						return (
-							<div
-								key={i}
-								style={{
-									width: `calc(${thumbBase} * ${1 - distance * 0.125})`,
-									marginLeft: i === 0 ? undefined : "clamp(-36px, -63.6px + 4.8vw, -5px)",
-									transform: `perspective(100px) rotateY(${distance === 0 ? 25 : 30}deg)`,
-									zIndex: 10 - distance,
-									filter: `brightness(${72 - distance * 12}%)`,
-								}}
-							>
-								<Image
-									src={urlFor(photo).width(300).height(500).url()}
-									alt=""
-									width={128}
-									height={213}
-									className="w-full h-auto"
-								/>
-							</div>
-						);
-					})}
-				</div>
-
-				{/* Main Photo */}
-				{talent.gallery?.[0] && (
-					<div className="relative aspect-900/1222 h-[clamp(480px,calc(100vh-120px),700px)] z-20">
-						<Image
-							src={urlFor(talent.gallery[0]).width(900).height(1222).url()}
-							alt={talent.name ?? "Talent"}
-							fill
-							sizes="500px"
-							className="object-contain"
-							priority
-						/>
-						<div className="absolute inset-x-0 bottom-0 h-1/3 bg-linear-to-t from-vvook-black to-transparent pointer-events-none"/>
-							<div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-2">
-								<h1 className="font-menu text-[clamp(18px,10.59px+0.490vw,21px)] text-white">
-									{talent.name}
-								</h1>
-								<p className="absolute top-full left-0 font-menu text-[12px] text-vvook-yellow">
-									{`${String(currentPosition).padStart(2, "0")}/${String(talent.gallery?.length ?? 0).padStart(2, "0")}`}
-								</p>
-								{talent.instagram && (
-									<a
-										href={talent.instagram}
-										target="_blank" rel="noopener noreferrer"
-										className="absolute top-full right-0 mt-1">
-										<InstagramIcon color="text-white" />
-									</a>
-								)}
-							</div>
-					</div>
-				)}
-
-				{/* Right Fan */}
-				<div className="flex flex-1 items-end min-w-0 overflow-hidden py-20">
-					{rightPhotos.length > 0 && [...rightPhotos].map((photo, i) => (
-						<div
-							key={i}
-							style={{
-								width: `calc(${thumbBase} * ${1 - i * 0.125})`,
-								marginLeft: i === 0 ? undefined : "clamp(-36px, -63.6px + 4.8vw, -5px)",
-								transform: `perspective(100px) rotateY(${i === 0 ? -25 : -30}deg)`,
-								zIndex: 10 - i,
-								filter: `brightness(${72 - i * 12}%)`,
-							}}
-						>
-							<Image
-								src={urlFor(photo).width(300).height(500).url()}
-								alt=""
-								width={128}
-								height={213}
-								className="w-full h-auto"
-							/>
-						</div>
-					))}
-				</div>
+			<div className="hidden lg:flex">
+				<GalleryCoverflow photos={talent.gallery ?? []} name={talent.name ?? "Talent"} instagram={talent.instagram} />
 			</div>
+
 
 			{/* Measuraments */}
 			<div className={`grid ${extraValue != null ? "grid-cols-6" : "grid-cols-5"} justify-items-center max-w-md mx-auto mt-8 mb-4 font-menu text-[12px] text-center justify-center text-vvook-grey
@@ -225,3 +149,90 @@ export default async function Page({ params }: {params: Params}) {
 		</main>
 	)
 }
+
+
+//  <div className="hidden lg:flex items-center w-full">
+// 				{/* Left Fan */}
+// 				<div className="flex-1 flex justify-end items-end min-w-0 overflow-hidden py-20">
+// 					{leftPhotos.length > 0 && [...leftPhotos].reverse().map((photo, i) => {
+// 						const distance = leftPhotos.length - 1 - i;
+// 						return (
+// 							<div
+// 								key={i}
+// 								className="fan-left"
+// 								style={{
+// 									width: `calc(${thumbBase} * ${1 - distance * 0.125})`,
+// 									marginLeft: i === 0 ? undefined : "clamp(-36px, -63.6px + 4.8vw, -5px)",
+// 									transform: `perspective(100px) rotateY(${distance === 0 ? 25 : 30}deg)`,
+// 									zIndex: 10 - distance,
+// 									filter: `brightness(${72 - distance * 12}%)`,
+// 								}}
+// 							>
+// 								<Image
+// 									src={urlFor(photo).width(300).height(500).url()}
+// 									alt=""
+// 									width={128}
+// 									height={213}
+// 									className="w-full h-auto"
+// 								/>
+// 							</div>
+// 						);
+// 					})}
+// 				</div>
+
+// 				{/* Main Photo */}
+// 				{talent.gallery?.[0] && (
+// 					<div className="relative aspect-900/1222 h-[clamp(480px,calc(100vh-120px),700px)] z-20">
+// 						<Image
+// 							src={urlFor(talent.gallery[0]).width(900).height(1222).url()}
+// 							alt={talent.name ?? "Talent"}
+// 							fill
+// 							sizes="500px"
+// 							className="object-contain"
+// 							priority
+// 						/>
+// 						<div className="absolute inset-x-0 bottom-0 h-1/3 bg-linear-to-t from-vvook-black to-transparent pointer-events-none"/>
+// 							<div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-2">
+// 								<h1 className="font-menu text-[clamp(18px,10.59px+0.490vw,21px)] text-white">
+// 									{talent.name}
+// 								</h1>
+// 								<p className="absolute top-full left-0 font-menu text-[12px] text-vvook-yellow">
+// 									{`${String(currentPosition).padStart(2, "0")}/${String(talent.gallery?.length ?? 0).padStart(2, "0")}`}
+// 								</p>
+// 								{talent.instagram && (
+// 									<a
+// 										href={talent.instagram}
+// 										target="_blank" rel="noopener noreferrer"
+// 										className="absolute top-full right-0 mt-1">
+// 										<InstagramIcon color="text-white" />
+// 									</a>
+// 								)}
+// 							</div>
+// 					</div>
+// 				)}
+
+// 				{/* Right Fan */}
+// 				<div className="flex flex-1 items-end min-w-0 overflow-hidden py-20">
+// 					{rightPhotos.length > 0 && [...rightPhotos].map((photo, i) => (
+// 						<div
+// 							key={i}
+// 							className="fan-right"
+// 							style={{
+// 								width: `calc(${thumbBase} * ${1 - i * 0.125})`,
+// 								marginLeft: i === 0 ? undefined : "clamp(-36px, -63.6px + 4.8vw, -5px)",
+// 								transform: `perspective(100px) rotateY(${i === 0 ? -25 : -30}deg)`,
+// 								zIndex: 10 - i,
+// 								filter: `brightness(${72 - i * 12}%)`,
+// 							}}
+// 						>
+// 							<Image
+// 								src={urlFor(photo).width(300).height(500).url()}
+// 								alt=""
+// 								width={128}
+// 								height={213}
+// 								className="w-full h-auto"
+// 							/>
+// 						</div>
+// 					))}
+// 				</div>
+// 			</div> */}
