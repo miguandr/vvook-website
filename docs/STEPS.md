@@ -1230,3 +1230,74 @@ Six commits, split by work unit:
 - [ ] If the Welcome Page ever comes back: the real fix is the thin-edge-strip trick or a JS-driven theme-color update timed to a GSAP callback — both identified, neither applied.
 - [ ] `mix-blend-mode` on the header is confirmed blocked on the ScrollSmoother/JS-simulated-scroll rewrite — don't attempt it again as a standalone CSS task.
 - [ ] All earlier-session carried-forward items (font-loader `--font-mono` variable rename, Header nav text scale, Logo aspect-ratio discrepancy, `font-display` dangling reference in `style-guide/page.tsx`) still open, untouched this session.
+
+---
+
+## Session 16 — 2026-11-25
+
+### Goal
+
+Finish the header's adaptive-color system left blocked at the end of Session 15, take a first run at a shared-element Home → Model transition, and build an interactive (wheel-navigable) gallery for the model detail page.
+
+---
+
+### 1. Header: mix-blend-mode finally works — the fix was architectural, not a CSS value
+
+Session 15 concluded `mix-blend-mode` was blocked pending a full ScrollSmoother rewrite. This session found the real constraint and fixed it directly, without touching scroll architecture at all.
+
+Confirmed via external references (not guessed): `mix-blend-mode` set on a *descendant* of a `position: fixed` element can't blend against real page content — the element that has `position: fixed` has its own stacking context, and that isolation can't be escaped from below. The fix is to put the blend on the fixed element itself.
+
+Rebuilt the header around that constraint: one `<header>` carries `mix-blend-difference` on its text (disabled specifically on Home — its background is flat yellow, and neither candidate source color blends cleanly against yellow: a white source gives black on real-neutral backgrounds but blue on yellow; a yellow source gives black on yellow but blue on near-white. Confirmed with the actual RGB subtraction, not assumed). The logo has to stay a literal, never-blending brand color, so it couldn't live inside the same blended element — it now lives in its own sibling `fixed` `<div>`.
+
+A second, subtler bug surfaced from this same change: the model detail page's header used to rely on *not* being `fixed` — a plain element in normal document flow, letting the page's own small `pt-8` padding work for free, no JS needed. When "always fixed" was applied universally to fix an unrelated two-layer stacking bug, it silently broke that free spacing (the header stopped pushing content down, since fixed elements are removed from flow). Root-caused and reverted properly: the model page gets its own single, simple, non-fixed header branch — it never needed adaptive color in the first place, since it has no mixed backgrounds to adapt to.
+
+### 2. Two bigger architectural experiments, both built and both reverted same day
+
+- **GSAP ScrollSmoother** (fake-scroll wrapper, `#smooth-wrapper`/`#smooth-content`) — built on the theory that header and content needed to share one real (non-`fixed`) stacking context for the blend to work. Turned out unnecessary once the real fix (§1) was found; removed.
+- **Next.js intercepting + parallel routes** (`app/@modal/(.)[slug]`) — built so Home's grid could stay mounted while a model's page opens on top of it, the prerequisite for a true shared-element transition. Broke client-side navigation site-wide: clicking any header link silently failed or 404'd, while a hard refresh on the same URL always worked — a known signature of a parallel-route slot mismatch. Reverted immediately rather than debug forward on a broken foundation.
+
+Both are documented here specifically because neither was a dead end conceptually — they're the right tools for later, bigger features (a true Home↔Model shared-element transition still needs intercepting routes). The lesson that mattered more: this ran for a long stretch with zero commits as a safety net. Today's commits exist specifically so that doesn't happen again.
+
+### 3. Home grid: click-to-pile Flip animation — built, deliberately not wired in yet
+
+`ModelGrid.tsx` is a client-component rebuild of the home grid. Clicking a card: GSAP `Flip` animates every *other* currently-visible card (filtered by `offsetParent !== null`, the same trick that fixed the `CardReveal` delay bug last session) flying behind the clicked one, staggered nearest-first, while the screen fades to black.
+
+It stops there on purpose. `page.tsx` still renders its own original inline grid with plain `<Link>` navigation — confirmed via grep that `ModelGrid` isn't imported anywhere yet. Wiring it in now, before the navigation half exists, would mean every click animates to a dead end (fade to black, then nothing). That's the clearly-scoped next step, not a forgotten connection.
+
+### 4. Model detail page: an interactive coverflow gallery, after three wrong turns
+
+Replaced the static desktop fan with `GalleryCoverFlow.tsx` — same visual design the client already approved (thumbnail size, rotation, overlap, brightness), now navigable by mouse wheel. Getting there took three attempts:
+
+1. **A single continuous "distance from center" formula**, inventing new spacing/rotation constants from scratch. Looked nothing like the original — the lesson, stated directly by the client: never re-derive values a design already has tuned; measure or reuse them.
+2. **Flip animating photos between left/main/right JSX blocks.** Looked catastrophically broken (photos "flying across the whole screen"). Root cause: moving an element with the same React `key` into a structurally different part of the render tree doesn't preserve its DOM node — React destroys and recreates it, so Flip ends up animating from garbage captured-state coordinates, because the element it captured no longer exists.
+3. **The version that held**: every photo gets exactly one stable `<div>`, rendered once, in the same spot in the tree for its entire lifetime (keyed by its Sanity `_key`). Only its `transform`/size animate via plain `gsap.to()` when the centered index changes — no reparenting, no Flip needed at all for this case. Real geometry (the resolved pixel values of the two `clamp()` expressions that drive thumbnail width and overlap) is read directly from the browser via a throwaway measuring `<div>`, never hand-calculated.
+
+The perspective/fisheye lesson from §1 showed up here too: `transformPerspective` has to be large and shared on the container (not small and per-element) once elements are sized beyond what a tight local perspective was tuned for — a 100px perspective that looks right on a 150px-wide thumbnail looks like an extreme fisheye on anything bigger.
+
+Wheel navigation ignores events whose `clientY` is within the top ~140px of the screen — tracked down a real interaction bug where scrolling near the header was changing photos instead of doing nothing: Header's `pointer-events: none` (set for an unrelated reason, so clicks reach the grid underneath it on Home) was *also* letting wheel events pass straight through to whatever sits behind it, which on the model page is the gallery.
+
+`GalleryFanReveal.tsx` ports the original "thumbnails emerge from behind the main photo" entrance animation to the new coverflow's element structure.
+
+### 5. Housekeeping flagged, not actioned
+
+A few untracked files sat in the working tree with no clear connection to this session's work — left alone rather than guessed at:
+- `src/components/SmoothScroll.tsx` — confirmed unused (`grep` found no import anywhere but the file itself) — dead code from the reverted ScrollSmoother experiment (§2).
+- `Makefile` — empty, no content.
+- `about us.docx` — a Word document, not code; unclear why it's in the repo root.
+- `public/instagram-logo-facebook-2-svgrepo-com.svg` — unused; `InstagramIcon.tsx` is a self-contained inline SVG and never references a file asset.
+
+### Commits this session
+
+- `feat(home): reveal model cards with a rise-and-fade as they scroll into view` (`54487c8`)
+- `feat(home): add grid-to-pile Flip animation on model click (not wired in yet)` (`946d9c2`)
+- `feat(header): adaptive color via mix-blend-mode, simple static header on model pages` (`8071e84`)
+- `feat(model-page): interactive coverflow gallery with wheel navigation` (`5472133`)
+
+### Pending — Next Session
+
+- [ ] Wire `ModelGrid.tsx` into `page.tsx` — only once the navigation half (below) exists, or clicking a model goes nowhere.
+- [ ] Part 2 of the Home → Model transition: connect `ModelGrid`'s pile animation to real navigation (intercepting routes, rebuilt more incrementally this time with a commit as soon as it's confirmed working) and trigger `GalleryFanReveal`'s entrance at the right moment in the handoff.
+- [ ] Add drag/swipe to `GalleryCoverFlow` — today only shipped wheel navigation. Agreed direction: real-time finger-follow while dragging, a decisive snap (with a slight `back.out` settle) to the nearest photo on release.
+- [ ] Delete `src/components/SmoothScroll.tsx` once confirmed nothing else needs it.
+- [ ] Figure out what `Makefile` and `about us.docx` are for before committing or deleting them.
+- [ ] All earlier carried-forward items (font-loader `--font-mono` variable rename, Header nav text scale, Logo aspect-ratio discrepancy, `font-display` dangling reference in `style-guide/page.tsx`) still open, untouched this session.
