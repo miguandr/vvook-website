@@ -3,6 +3,7 @@ import { urlFor } from "@/sanity/lib/image";
 import Image from "next/image";
 import type { Viewport } from "next";
 import Link from "next/link";
+import CardReveal from "@/components/CardReveal";
 
 export const viewport: Viewport = {
 	themeColor: "#faff00",
@@ -55,7 +56,7 @@ export default async function Home() {
 
 	const Photo = ({ talent, priority }: { talent: (typeof talents)[number]; priority?: boolean }) => (
 		<Link href={`/${talent.slug?.current ?? "#"}`}>
-			<div className="group relative mb-4 overflow-hidden">
+			<div className="group relative mb-4 overflow-hidden card-reveal opacity-0 translate-y-10">
 				<Image
 					src={urlFor(talent.mainPhoto).width(800).height(1060).url()}
 					alt={talent.name ?? "Talent"}
@@ -78,6 +79,7 @@ export default async function Home() {
 
   return (
       <main className="bg-vvook-yellow text-vvook-black min-h-screen pt-24 md:pt-43 lg:pt-62">
+		<CardReveal />
 		{/* Mobile: 2 columns */}
 		<div className="grid grid-cols-2 gap-4 md:hidden">
 			<div>{m1.map((t, i) => <Photo key={t._id} talent={t} priority={i === 0} />)}</div>
